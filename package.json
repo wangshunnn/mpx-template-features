@@ -4,13 +4,18 @@
   "author": "wangshun",
   "license": "MIT",
   "version": "1.0.0",
+  "bugs": "https://github.com/wangshunnn/mpx-template-features/issues",
+  "homepage": "https://github.com/wangshunnn/mpx-template-features",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Microsoft/vscode-extension-samples"
+    "url": "https://github.com/wangshunnn/mpx-template-features"
   },
   "displayName": "Mpx Template Features",
   "publisher": "wangshun",
-  "categories": [],
+  "icon": "asset/mpx-icon.png",
+  "categories": [
+    "Programming Languages"
+  ],
   "keywords": [
     "mpx",
     "template language",
