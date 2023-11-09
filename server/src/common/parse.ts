@@ -141,7 +141,7 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string) {
                 const _loc = prop.value?.loc;
                 const [key = "", offset = 0] = formatCotent(content);
                 const locStart =
-                  _loc!.start.offset + offset + templateLoc.start;
+                  _loc!.start?.offset + offset + templateLoc.start;
                 key &&
                   variableMapping.set(key + "-" + locStart, {
                     key,
@@ -411,16 +411,16 @@ export function genTemplate2ScriptMapping(
   if (!templateVariableMapping || !scriptMapping) {
     return mapping;
   }
-  for (const [mapKey, value] of templateVariableMapping.entries()) {
-    const { key } = value;
-    const mappingLoc =
-      scriptMapping.dataMapping.get(key) ||
-      scriptMapping.computedMapping.get(key) ||
-      scriptMapping.methodsMapping.get(key);
-    if (mappingLoc) {
-      mapping.set(mapKey, mappingLoc);
-    }
-  }
+  // for (const [mapKey, value] of templateVariableMapping.entries()) {
+  //   const { key } = value;
+  //   const mappingLoc =
+  //     scriptMapping.dataMapping.get(key) ||
+  //     scriptMapping.computedMapping.get(key) ||
+  //     scriptMapping.methodsMapping.get(key);
+  //   if (mappingLoc) {
+  //     mapping.set(mapKey, mappingLoc);
+  //   }
+  // }
   // console.log("---> genTemplate2ScriptMapping: ", mapping);
   return mapping;
 }
