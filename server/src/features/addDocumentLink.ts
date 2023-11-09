@@ -23,31 +23,51 @@ function documentLinkProvider(
     const document = documents.get(textDocument.uri);
     const uri = document?.uri;
     if (!document || !uri) return null;
-    const { templateMapping } = mpxLocationMappingService.get(uri) || {};
+    const { templateMapping, stylusMapping, scriptMapping } =
+      mpxLocationMappingService.get(uri) || {};
     if (!templateMapping) return null;
+   
     const { classMapping, variableMapping } = templateMapping;
-    const classLinkList = [...classMapping.entries()].map(([, v]) => {
-      const { loc } = v;
-      const link: DocumentLink = {
-        range: {
-          start: document.positionAt(loc.start),
-          end: document.positionAt(loc.end),
-        },
-        tooltip: "转到 style 中的样式",
-      };
-      return link;
-    });
-    const variableLinkList = [...variableMapping.entries()].map(([, v]) => {
-      const { loc } = v;
-      const link: DocumentLink = {
-        range: {
-          start: document.positionAt(loc.start),
-          end: document.positionAt(loc.end),
-        },
-        tooltip: "转到 script 中的定义",
-      };
-      return link;
-    });
+
+    const classLinkList: DocumentLink[] = [];
+    if (stylusMapping) {
+      [...classMapping.entries()].forEach(([_key, v]) => {
+        const key = _key.substring(0, _key.lastIndexOf("-"));
+        if (stylusMapping.has(key)) {
+          const { loc } = v;
+          const link: DocumentLink = {
+            range: {
+              start: document.positionAt(loc.start),
+              end: document.positionAt(loc.end),
+            },
+            tooltip: "转到 style 中的样式",
+          };
+          classLinkList.push(link);
+        }
+      });
+    }
+
+    const variableLinkList: DocumentLink[] = [];
+    if (scriptMapping) {
+      [...variableMapping.entries()].forEach(([_key, v]) => {
+        const key = _key.substring(0, _key.lastIndexOf("-"));
+        if (
+          scriptMapping.dataMapping?.has?.(key) ||
+          scriptMapping.computedMapping?.has?.(key) ||
+          scriptMapping.methodsMapping?.has?.(key)
+        ) {
+          const { loc } = v;
+          const link: DocumentLink = {
+            range: {
+              start: document.positionAt(loc.start),
+              end: document.positionAt(loc.end),
+            },
+            tooltip: "转到 script 中的定义",
+          };
+          variableLinkList.push(link);
+        }
+      });
+    }
     return [...classLinkList, ...variableLinkList];
   };
 }
