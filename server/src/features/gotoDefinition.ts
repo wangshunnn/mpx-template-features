@@ -24,7 +24,7 @@ function definitionProvider(
     const fileUri = document?.uri;
     if (!document || !fileUri) return null;
 
-    console.log("===⬇ GoToDefinition:");
+    // console.log("===⬇ GoToDefinition:");
     const st_time = Date.now();
     const uri = document.uri.toString();
     const targetDefinition = findDefinition(
@@ -33,15 +33,15 @@ function definitionProvider(
       document.offsetAt(position)
     );
     const end_time = Date.now();
-    console.log(
-      "\tposition:",
-      position,
-      "\nmpxMappingService: ",
-      mpxLocationMappingService.size,
-      ",",
-      [...mpxLocationMappingService.keys()]
-    );
-    console.log("===⬆", "cost-time: ", end_time - st_time, "\n");
+    // console.log(
+    //   "\tposition:",
+    //   position,
+    //   "\nmpxMappingService: ",
+    //   mpxLocationMappingService.size,
+    //   ",",
+    //   [...mpxLocationMappingService.keys()]
+    // );
+    // console.log("===⬆", "cost-time: ", end_time - st_time, "\n");
 
     if (!targetDefinition) return null;
     return targetDefinition;

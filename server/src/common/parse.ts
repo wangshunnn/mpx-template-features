@@ -12,10 +12,10 @@ import {
 } from "@vue/compiler-sfc";
 import type { RootNode, TemplateChildNode } from "@vue/compiler-core";
 import * as fs from "fs";
+import * as path from "path";
 import * as stylus from "stylus";
 import { URI } from "vscode-uri";
 import { TextDocument } from "vscode-languageserver-textdocument";
-// import traverse from '@babel/traverse';
 
 export type MapLocation = { start: number; end: number };
 export type MatrixLocation = { line: number; column: number };
@@ -35,7 +35,7 @@ export type ScriptMapping = {
   methodsMapping: ScriptMappingItem;
 } | null;
 export type StylusMapping = Map<string, MatrixLocation[]>;
-export type ScriptJsonMapping = Map<string, MapLocation>;
+export type ScriptJsonMapping = Map<string, string>;
 export type Template2ScriptMapping = Map<string, MapLocation>;
 export type SFCMapping = {
   templateMapping: TemplateMapping | null;
@@ -122,9 +122,9 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string) {
                 const content = prop.value?.content;
                 const _loc = prop.value?.loc;
                 const [key = "", offset = 0] = formatCotent(content);
-                const locStart =
-                  _loc!.start.offset + offset + templateLoc.start;
-                key &&
+                if (key && _loc?.start?.offset) {
+                  const locStart =
+                    _loc.start.offset + offset + templateLoc.start;
                   classMapping.set(key + "-" + locStart, {
                     key,
                     loc: {
@@ -132,6 +132,7 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string) {
                       end: locStart + key.length,
                     },
                   });
+                }
               } else if (
                 prop.name.startsWith("bind") ||
                 prop.name.startsWith("catch") ||
@@ -140,9 +141,9 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string) {
                 const content = prop.value?.content;
                 const _loc = prop.value?.loc;
                 const [key = "", offset = 0] = formatCotent(content);
-                const locStart =
-                  _loc!.start?.offset + offset + templateLoc.start;
-                key &&
+                if (key && _loc?.start?.offset) {
+                  const locStart =
+                    _loc.start.offset + offset + templateLoc.start;
                   variableMapping.set(key + "-" + locStart, {
                     key,
                     loc: {
@@ -150,6 +151,7 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string) {
                       end: locStart + key.length,
                     },
                   });
+                }
               }
             }
           }
@@ -184,6 +186,7 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string) {
   };
 }
 
+// TODO 增加对复杂表达式的解析
 export function formatCotent(content = ""): [string, number] | [] {
   if (!content) return [];
   let key = content.trim();
@@ -191,9 +194,8 @@ export function formatCotent(content = ""): [string, number] | [] {
     key = key.slice(2, -2).trim();
   }
   if (
-    key.includes(" ") ||
-    key.includes("'") ||
-    key.includes('"') ||
+    key.startsWith("'") ||
+    key.startsWith('"') ||
     ["true", "false"].includes(key)
   ) {
     return ["", 0];
@@ -224,9 +226,10 @@ export function hasScriptLang(descriptor: SFCDescriptor) {
 export function parseScriptlang(descriptor: SFCDescriptor, uri: string) {
   if (!hasScriptLang) return null;
 
-  // if (descriptor.scriptSetup) {
-  // 	return parseScriptSetup(descriptor, uri);
-  // }
+  if (descriptor.scriptSetup) {
+    return null;
+    // return parseScriptSetup(descriptor, uri);
+  }
   return parseScriptLegacy(descriptor, uri);
 }
 
@@ -343,7 +346,7 @@ export function parseScriptSetup(descriptor: SFCDescriptor, uri?: string) {
 
 export function parseStylus(descriptor: SFCDescriptor, uri?: string) {
   const stylusMapping = new Map<string, MatrixLocation[]>();
-  if (descriptor.styles[0]?.lang !== "stylus") {
+  if (descriptor.styles?.[0]?.lang !== "stylus") {
     return stylusMapping;
   }
   const styles = descriptor.styles[0];
@@ -397,9 +400,43 @@ export function parseStylus(descriptor: SFCDescriptor, uri?: string) {
 export function parseScriptJson(
   descriptor: SFCDescriptor,
   errors: CompilerError[],
-  uri?: string
+  uri: string
 ) {
-  const jsonMapping = new Map<string, MapLocation>();
+  const jsonMapping = new Map<string, string>();
+  try {
+    if (!errors?.length) return jsonMapping;
+    const jsonDescriptor: any = errors.find(
+      (item: any) =>
+        item?.loc &&
+        (item.loc?.source?.startsWith('<script name="json">') ||
+          item.loc?.source?.startsWith('<script type="application/json">'))
+    );
+    if (!jsonDescriptor) return jsonMapping;
+    const jsonSource: string = jsonDescriptor.loc.source;
+    if (jsonSource.startsWith('<script type="application/json">')) {
+      const jsonSourceStr = jsonSource.substring(
+        jsonSource.indexOf("\n"),
+        jsonSource.lastIndexOf("\n")
+      );
+      const jsonSourceParse = JSON.parse(jsonSourceStr);
+      if (jsonSourceParse && jsonSourceParse.usingComponents) {
+        for (const [key, val] of Object.entries(
+          jsonSourceParse.usingComponents
+        )) {
+          let targetPath = (val as string) || "";
+          if (targetPath.startsWith("./") || targetPath.startsWith("../")) {
+            targetPath = path.join(uri, targetPath);
+          }
+          jsonMapping.set(key, targetPath as string);
+        }
+        return jsonMapping;
+      }
+    } else {
+      return jsonMapping;
+    }
+  } catch (err) {
+    console.error("---> parseScriptJson error: ", err);
+  }
   return jsonMapping;
 }
 
