@@ -23,11 +23,31 @@ function documentLinkProvider(
     const document = documents.get(textDocument.uri);
     const uri = document?.uri;
     if (!document || !uri) return null;
-    const { templateMapping, stylusMapping, scriptMapping } =
+    const { templateMapping, stylusMapping, scriptMapping, scriptJsonMapping } =
       mpxLocationMappingService.get(uri) || {};
     if (!templateMapping) return null;
-   
-    const { classMapping, variableMapping } = templateMapping;
+
+    const { tagMapping, classMapping, variableMapping } = templateMapping;
+
+    const tagLinkList: DocumentLink[] = [];
+    if (scriptJsonMapping) {
+      [...tagMapping.entries()].forEach(([_key, v]) => {
+        const key = _key.substring(0, _key.lastIndexOf("-"));
+        if (scriptJsonMapping.has(key)) {
+          const { loc } = v;
+          const { configPath, absolutePath } = scriptJsonMapping.get(key)!;
+          const link: DocumentLink = {
+            target: absolutePath,
+            range: {
+              start: document.positionAt(loc.start),
+              end: document.positionAt(loc.end),
+            },
+            tooltip: "转到自定义组件文件：" + configPath,
+          };
+          tagLinkList.push(link);
+        }
+      });
+    }
 
     const classLinkList: DocumentLink[] = [];
     if (stylusMapping) {
@@ -68,7 +88,8 @@ function documentLinkProvider(
         }
       });
     }
-    return [...classLinkList, ...variableLinkList];
+
+    return [...tagLinkList, ...classLinkList, ...variableLinkList];
   };
 }
 

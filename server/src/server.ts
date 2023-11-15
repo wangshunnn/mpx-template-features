@@ -74,6 +74,7 @@ connection.onInitialized(() => {
       connection.console.log("Workspace folder change event received.");
     });
   }
+  connection.console.log("mpx-template-features initialized");
 });
 
 interface ExampleSettings {

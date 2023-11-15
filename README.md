@@ -12,4 +12,4 @@
 
 ## 示例
 
-![示例图片](./asset/mpx-feature.png)
+![示例图片](./asset/mpx-features-demo.png)
