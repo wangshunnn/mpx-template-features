@@ -25,14 +25,14 @@ function definitionProvider(
     if (!document || !fileUri) return null;
 
     // console.log("===⬇ GoToDefinition:");
-    const st_time = Date.now();
+    // const st_time = Date.now();
     const uri = document.uri.toString();
     const targetDefinition = findDefinition(
       document,
       uri,
       document.offsetAt(position)
     );
-    const end_time = Date.now();
+    // const end_time = Date.now();
     // console.log(
     //   "\tposition:",
     //   position,
@@ -54,7 +54,8 @@ export function findDefinition(
   position: number
 ): Definition | null {
   const sfcMapping = mpxLocationMappingService.get(uri);
-  const { templateMapping, scriptMapping, stylusMapping } = sfcMapping || {};
+  const { templateMapping, scriptMapping, stylusMapping, scriptJsonMapping } =
+    sfcMapping || {};
   if (
     !templateMapping ||
     position < templateMapping.loc?.start ||
@@ -63,6 +64,25 @@ export function findDefinition(
     return null;
   }
 
+  const findTagDefinition = binarySearch(
+    templateMapping.tagLocationSort,
+    position
+  );
+  if (findTagDefinition && scriptJsonMapping) {
+    const { key } = findTagDefinition;
+    const { absolutePath = "" } = scriptJsonMapping.get(key) || {};
+    if (absolutePath) {
+      // 跳转其他文件
+      return {
+        uri: absolutePath,
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 0, character: 0 },
+        },
+      };
+    }
+    return null;
+  }
   const findClassDefinition = binarySearch(
     templateMapping.classLocationSort,
     position

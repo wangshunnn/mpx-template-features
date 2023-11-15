@@ -20,11 +20,17 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 export type MapLocation = { start: number; end: number };
 export type MatrixLocation = { line: number; column: number };
 export type MappingValue = { key: string; loc: MapLocation };
+export type JsonMappingValue = {
+  configPath: string;
+  absolutePath: string;
+};
 export type TemplateMappingItem = Map<string, MappingValue>;
 export type ScriptMappingItem = Map<string, MapLocation>;
 export type TemplateMapping = {
+  tagMapping: TemplateMappingItem;
   classMapping: TemplateMappingItem;
   variableMapping: TemplateMappingItem;
+  tagLocationSort: MappingValue[];
   classLocationSort: MappingValue[];
   variableLocationSort: MappingValue[];
   loc: MapLocation;
@@ -35,7 +41,7 @@ export type ScriptMapping = {
   methodsMapping: ScriptMappingItem;
 } | null;
 export type StylusMapping = Map<string, MatrixLocation[]>;
-export type ScriptJsonMapping = Map<string, string>;
+export type ScriptJsonMapping = Map<string, JsonMappingValue>;
 export type Template2ScriptMapping = Map<string, MapLocation>;
 export type SFCMapping = {
   templateMapping: TemplateMapping | null;
@@ -92,6 +98,7 @@ export function parseSFC(uri: string, document?: TextDocument): SFCMapping {
 }
 
 export const ignorePropList = ["wx:key", "wx:ref"];
+export const ignoreTagList = ["template", "view", "image", "text", "block"];
 
 export function parseTemplate(descriptor: SFCDescriptor, uri: string) {
   if (!descriptor.template?.content) return null;
@@ -100,6 +107,7 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string) {
     filename: uri,
     id: uri + "_mpx_template_",
   });
+  const tagMapping = new Map<string, MappingValue>();
   const classMapping = new Map<string, MappingValue>();
   const variableMapping = new Map<string, MappingValue>();
   const templateLoc = {
@@ -107,19 +115,37 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string) {
     end: descriptor.template.ast.loc?.end?.offset + 1,
   };
 
+  // fs.writeFileSync(
+  //   uriToFileName(uri).replace(".mpx", "-temp.json"),
+  //   JSON.stringify(compileTemplateResult, null, 2)
+  // );
+
   function traverseTemplate(ast: RootNode) {
     if (!ast || !ast.children) return null;
     // dfs 深度优先好处可以保证位置顺序递增
     function dfsTraverseChildren(children: TemplateChildNode[]) {
       for (const child of children) {
         if (child.type === 1) {
+          // 自定义标签
+          if (child?.tag && !ignoreTagList.includes(child.tag)) {
+            const key = child.tag;
+            const locStart = child.loc.start.offset + templateLoc.start;
+            tagMapping.set(key + "-" + locStart, {
+              key,
+              loc: {
+                start: locStart,
+                end: locStart + key.length,
+              },
+            });
+          }
+          // 标签属性
           if (child.props?.length > 0) {
             for (const prop of child.props) {
               if (!("value" in prop)) {
                 continue;
               }
               if (prop.name === "class") {
-                const content = prop.value?.content;
+                const content = JSON.parse(prop.value?.loc?.source + "");
                 const _loc = prop.value?.loc;
                 const [key = "", offset = 0] = formatCotent(content);
                 if (key && _loc?.start?.offset) {
@@ -170,16 +196,15 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string) {
     console.error("---> traverseTemplate error: ", err);
   }
 
-  // console.log(
-  //   "---> parseTemplate: ",
-  //   classMapping.keys(),
-  //   variableMapping.keys()
-  // );
+  const tagLocationSort = [...tagMapping.entries()].map(([, v]) => v);
   const classLocationSort = [...classMapping.entries()].map(([, v]) => v);
   const variableLocationSort = [...variableMapping.entries()].map(([, v]) => v);
+  // console.log("---> parseTemplate: ", tagMapping.keys(), tagLocationSort);
   return {
+    tagMapping,
     classMapping,
     variableMapping,
+    tagLocationSort,
     classLocationSort,
     variableLocationSort,
     loc: templateLoc,
@@ -217,10 +242,27 @@ export function formatCotent(content = ""): [string, number] | [] {
 }
 
 export function hasScriptLang(descriptor: SFCDescriptor) {
-  return (
-    descriptor.scriptSetup ||
-    !(descriptor.script?.attrs?.name + "").toLowerCase().includes("json")
-  );
+  return descriptor.scriptSetup || !getJsonScriptType(descriptor);
+}
+
+export const JSON_SCRIPT_TYPE = {
+  NAME_JSON: "name-json",
+  TYPE_JSON: "type-json",
+} as const;
+export type ValueOf<T> = T[keyof T];
+
+export function getJsonScriptType(
+  descriptor: SFCDescriptor
+): ValueOf<typeof JSON_SCRIPT_TYPE> | null {
+  if ((descriptor.script?.attrs?.name + "").toLowerCase().includes("json")) {
+    return JSON_SCRIPT_TYPE.NAME_JSON;
+  } else if (
+    (descriptor.script?.attrs?.type + "").toLowerCase().includes("json")
+  ) {
+    return JSON_SCRIPT_TYPE.TYPE_JSON;
+  } else {
+    return null;
+  }
 }
 
 export function parseScriptlang(descriptor: SFCDescriptor, uri: string) {
@@ -402,42 +444,89 @@ export function parseScriptJson(
   errors: CompilerError[],
   uri: string
 ) {
-  const jsonMapping = new Map<string, string>();
+  const jsonMapping = new Map<string, JsonMappingValue>();
   try {
-    if (!errors?.length) return jsonMapping;
-    const jsonDescriptor: any = errors.find(
-      (item: any) =>
-        item?.loc &&
-        (item.loc?.source?.startsWith('<script name="json">') ||
-          item.loc?.source?.startsWith('<script type="application/json">'))
-    );
-    if (!jsonDescriptor) return jsonMapping;
-    const jsonSource: string = jsonDescriptor.loc.source;
-    if (jsonSource.startsWith('<script type="application/json">')) {
-      const jsonSourceStr = jsonSource.substring(
-        jsonSource.indexOf("\n"),
-        jsonSource.lastIndexOf("\n")
+    let jsonSource: string;
+    let jsonScriptType = getJsonScriptType(descriptor);
+    if (jsonScriptType) {
+      jsonSource = descriptor.script?.loc?.source as string;
+    } else if (errors?.length) {
+      const jsonDescriptor = errors.find(
+        (item: any) =>
+          item?.loc?.source?.startsWith('<script name="json">') ||
+          item?.loc?.source?.startsWith('<script type="application/json">')
       );
-      const jsonSourceParse = JSON.parse(jsonSourceStr);
-      if (jsonSourceParse && jsonSourceParse.usingComponents) {
-        for (const [key, val] of Object.entries(
-          jsonSourceParse.usingComponents
-        )) {
-          let targetPath = (val as string) || "";
-          if (targetPath.startsWith("./") || targetPath.startsWith("../")) {
-            targetPath = path.join(uri, targetPath);
-          }
-          jsonMapping.set(key, targetPath as string);
-        }
-        return jsonMapping;
+      jsonSource = jsonDescriptor?.loc?.source as string;
+      const str = jsonSource.slice(0, jsonSource.indexOf("\n"));
+      if (str.includes("type") && str.includes("application/json")) {
+        jsonScriptType = JSON_SCRIPT_TYPE.TYPE_JSON;
+      } else if (str.includes("name") && str.includes("json")) {
+        jsonScriptType = JSON_SCRIPT_TYPE.NAME_JSON;
       }
     } else {
       return jsonMapping;
+    }
+    if (
+      jsonSource.indexOf("\n") !== -1 &&
+      jsonSource.lastIndexOf("\n") !== -1
+    ) {
+      jsonSource = jsonSource.substring(
+        jsonSource.indexOf("\n"),
+        jsonSource.lastIndexOf("\n")
+      );
+    }
+    // console.log("---> jsonScriptType", jsonScriptType);
+    // console.log("---> jsonSource", jsonSource);
+    if (jsonScriptType === JSON_SCRIPT_TYPE.TYPE_JSON) {
+      // <script type="application/json">
+      const jsonUsingComponents = JSON.parse(jsonSource)?.usingComponents;
+      if (jsonUsingComponents) {
+        for (const [key, val] of Object.entries(jsonUsingComponents)) {
+          const targetPath = formatUsingComponentsPath(val as string, uri);
+          if (targetPath) {
+            jsonMapping.set(key, {
+              configPath: val as string,
+              absolutePath: targetPath as string,
+            });
+          }
+        }
+        // console.log("---> jsonMapping", jsonMapping);
+        return jsonMapping;
+      }
+    } else {
+      // <script name="json">
     }
   } catch (err) {
     console.error("---> parseScriptJson error: ", err);
   }
   return jsonMapping;
+}
+
+export function formatUsingComponentsPath(
+  componentPath: string = "",
+  uri: string
+): string {
+  if (!componentPath) return "";
+  if (componentPath.indexOf("?") !== -1) {
+    componentPath = componentPath.substring(0, componentPath.indexOf("?"));
+  }
+  if (componentPath.startsWith("./") || componentPath.startsWith("../")) {
+    componentPath = path.join(uriToFileName(uri), "..", componentPath);
+  } else {
+    return "";
+  }
+  if (componentPath.endsWith(".mpx")) {
+    if (fs.existsSync(componentPath)) {
+      return componentPath;
+    }
+  } else {
+    if (fs.existsSync(componentPath + ".mpx")) {
+      return componentPath + ".mpx";
+    } else if (fs.existsSync(componentPath + "/index.mpx")) {
+      return componentPath + "/index.mpx";
+    }
+  }
+  return "";
 }
 
 export function genTemplate2ScriptMapping(
