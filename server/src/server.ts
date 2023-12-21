@@ -90,7 +90,7 @@ connection.onInitialized(() => {
       connection.console.info(`workspace root path: ${JSON.stringify(res)}`);
     })
     .catch((err) => {
-      projectRootpathSolve("");
+      projectRootpathSolve(process.cwd() || "");
       connection.console.error(err);
     });
 
