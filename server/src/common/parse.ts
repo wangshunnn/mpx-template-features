@@ -14,15 +14,16 @@ import type { RootNode, TemplateChildNode } from "@vue/compiler-core";
 import * as fs from "fs";
 import * as path from "path";
 import * as stylus from "stylus";
-import { URI } from "vscode-uri";
 import { TextDocument } from "vscode-languageserver-textdocument";
+import { uriToFileName } from "./utils";
 
 export type MapLocation = { start: number; end: number };
 export type MatrixLocation = { line: number; column: number };
 export type MappingValue = { key: string; loc: MapLocation };
 export type JsonMappingValue = {
   configPath: string;
-  absolutePath: string;
+  absolutePath?: string;
+  relativePath?: string;
 };
 export type TemplateMappingItem = Map<string, MappingValue>;
 export type ScriptMappingItem = Map<string, MapLocation>;
@@ -50,10 +51,6 @@ export type SFCMapping = {
   scriptJsonMapping: ScriptJsonMapping | null;
   template2ScriptMapping: Template2ScriptMapping | null;
 };
-
-// eg: file:///Users/didi/mycode/test/hello.mpx -> /Users/didi/mycode/test/hello.mpx
-export const uriToFileName = (uri: string) =>
-  URI.parse(uri).fsPath.replace(/\\/g, "/");
 
 export function parseSFC(uri: string, document?: TextDocument): SFCMapping {
   try {
@@ -482,11 +479,13 @@ export function parseScriptJson(
       const jsonUsingComponents = JSON.parse(jsonSource)?.usingComponents;
       if (jsonUsingComponents) {
         for (const [key, val] of Object.entries(jsonUsingComponents)) {
-          const targetPath = formatUsingComponentsPath(val as string, uri);
-          if (targetPath) {
+          const { absolutePath = "", relativePath = "" } =
+            formatUsingComponentsPath(val as string, uri);
+          if (absolutePath || relativePath) {
             jsonMapping.set(key, {
               configPath: val as string,
-              absolutePath: targetPath as string,
+              absolutePath,
+              relativePath,
             });
           }
         }
@@ -494,7 +493,7 @@ export function parseScriptJson(
         return jsonMapping;
       }
     } else {
-      // <script name="json">
+      // TODO <script name="json">
     }
   } catch (err) {
     console.error("---> parseScriptJson error: ", err);
@@ -505,16 +504,25 @@ export function parseScriptJson(
 export function formatUsingComponentsPath(
   componentPath: string = "",
   uri: string
-): string {
-  if (!componentPath) return "";
+): { absolutePath?: string; relativePath?: string } {
+  if (!componentPath) return {};
   if (componentPath.indexOf("?") !== -1) {
     componentPath = componentPath.substring(0, componentPath.indexOf("?"));
   }
   if (componentPath.startsWith("./") || componentPath.startsWith("../")) {
     componentPath = path.join(uriToFileName(uri), "..", componentPath);
   } else {
-    return "";
+    return { relativePath: componentPath };
   }
+  const absolutePath = reolveAbsolutePath(componentPath);
+  if (absolutePath) {
+    return { absolutePath };
+  }
+  return { relativePath: componentPath };
+}
+
+export function reolveAbsolutePath(componentPath: string): string {
+  // 按优先级补充完整路径再尝试访问
   if (componentPath.endsWith(".mpx")) {
     if (fs.existsSync(componentPath)) {
       return componentPath;

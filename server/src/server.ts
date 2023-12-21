@@ -21,6 +21,13 @@ let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 let hasDiagnosticRelatedInformationCapability = false;
 
+let projectRootpathSolve: (value: string) => void;
+export const projectRootpathPromise: Promise<string> = new Promise(
+  (resolve) => {
+    return (projectRootpathSolve = resolve);
+  }
+);
+
 connection.onInitialize((params: InitializeParams) => {
   const capabilities = params.capabilities;
   hasConfigurationCapability = !!(
@@ -71,10 +78,23 @@ connection.onInitialized(() => {
   }
   if (hasWorkspaceFolderCapability) {
     connection.workspace.onDidChangeWorkspaceFolders((_event) => {
-      connection.console.log("Workspace folder change event received.");
+      connection.console.info("Workspace folder change event received.");
     });
   }
-  connection.console.log("mpx-template-features initialized");
+
+  connection.workspace
+    .getWorkspaceFolders()
+    .then((res) => {
+      const root = res?.[0]?.uri;
+      root && projectRootpathSolve(root);
+      connection.console.info(`workspace root path: ${JSON.stringify(res)}`);
+    })
+    .catch((err) => {
+      projectRootpathSolve("");
+      connection.console.error(err);
+    });
+
+  connection.console.info("mpx-template-features initialized");
 });
 
 interface ExampleSettings {
@@ -134,7 +154,7 @@ useDocumentLinks(connection, documents);
 // useCompletion(connection);
 
 connection.onDidChangeWatchedFiles((_change) => {
-  connection.console.log("We received an file change event");
+  connection.console.info("We received an file change event");
 });
 documents.listen(connection);
 connection.listen();

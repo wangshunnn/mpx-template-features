@@ -5,43 +5,43 @@ import {
   createConnection,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { MapLocation, MappingValue, MatrixLocation } from "../common/parse";
+import {
+  MapLocation,
+  MappingValue,
+  MatrixLocation,
+  formatUsingComponentsPath,
+  reolveAbsolutePath,
+} from "../common/parse";
 import { mpxLocationMappingService } from "../common/mapping";
+import path = require("path");
+import { uriToFileName } from "../common/utils";
+import { projectRootpathPromise } from "../server";
 
-export function useDefinition(
+export async function useDefinition(
   connection: ReturnType<typeof createConnection>,
   documents: TextDocuments<TextDocument>
-): void {
+): Promise<void> {
   if (!connection) return;
-  connection.onDefinition(definitionProvider(documents));
+  const rooPath = await projectRootpathPromise;
+  connection.onDefinition(definitionProvider(documents, rooPath));
 }
 
 function definitionProvider(
-  documents: TextDocuments<TextDocument>
+  documents: TextDocuments<TextDocument>,
+  rooPath?: string
 ): (param: TextDocumentPositionParams) => Definition | null {
   return ({ textDocument, position }) => {
     const document: TextDocument | undefined = documents.get(textDocument.uri);
     const fileUri = document?.uri;
     if (!document || !fileUri) return null;
 
-    // console.log("===⬇ GoToDefinition:");
-    // const st_time = Date.now();
     const uri = document.uri.toString();
     const targetDefinition = findDefinition(
       document,
       uri,
-      document.offsetAt(position)
+      document.offsetAt(position),
+      rooPath
     );
-    // const end_time = Date.now();
-    // console.log(
-    //   "\tposition:",
-    //   position,
-    //   "\nmpxMappingService: ",
-    //   mpxLocationMappingService.size,
-    //   ",",
-    //   [...mpxLocationMappingService.keys()]
-    // );
-    // console.log("===⬆", "cost-time: ", end_time - st_time, "\n");
 
     if (!targetDefinition) return null;
     return targetDefinition;
@@ -51,7 +51,8 @@ function definitionProvider(
 export function findDefinition(
   document: TextDocument,
   uri: string,
-  position: number
+  position: number,
+  rooPath?: string
 ): Definition | null {
   const sfcMapping = mpxLocationMappingService.get(uri);
   const { templateMapping, scriptMapping, stylusMapping, scriptJsonMapping } =
@@ -70,7 +71,8 @@ export function findDefinition(
   );
   if (findTagDefinition && scriptJsonMapping) {
     const { key } = findTagDefinition;
-    const { absolutePath = "" } = scriptJsonMapping.get(key) || {};
+    const { absolutePath = "", relativePath = "" } =
+      scriptJsonMapping.get(key) || {};
     if (absolutePath) {
       // 跳转其他文件
       return {
@@ -80,6 +82,27 @@ export function findDefinition(
           end: { line: 0, character: 0 },
         },
       };
+    } else {
+      if (!rooPath) {
+        return null;
+      }
+      let res = reolveAbsolutePath(
+        path.join(uriToFileName(rooPath), relativePath)
+      );
+      if (!res) {
+        res = reolveAbsolutePath(
+          path.join(uriToFileName(rooPath), "/node_modules/", relativePath)
+        );
+      }
+      if (res) {
+        return {
+          uri: res,
+          range: {
+            start: { line: 0, character: 0 },
+            end: { line: 0, character: 0 },
+          },
+        };
+      }
     }
     return null;
   }
