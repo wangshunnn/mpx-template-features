@@ -1,5 +1,8 @@
 <br>
 
+<p align="center">
+<a href="https://mpxjs.cn" target="__blank"><img src="./asset/mpx-icon.png" alt="Mpx" width="80px" /></a>
+
 <h1 align="center">Mpx Template Features for VS Code</h1>
 
 <p align="center">
