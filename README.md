@@ -6,7 +6,7 @@
 <h1 align="center">Mpx Template Features for VS Code</h1>
 
 <p align="center">
-<a href="https://marketplace.visualstudio.com/items?itemName=wangshun.mpx-template-features" target="__blank"><img src="https://img.shields.io/visual-studio-marketplace/v/wangshun.mpx-template-features?color=374151&amp;label=Visual%20Studio%20Marketplace&amp;labelColor=000&amp;logo=visual-studio-code&amp;logoColor=0098FF" alt="Visual Studio Marketplace Version" /></a>
+<a href="https://marketplace.visualstudio.com/items?itemName=wangshun.mpx-template-features" target="__blank"><img src="https://img.shields.io/visual-studio-marketplace/v/wangshun.mpx-template-features?color=0098FF&amp;label=Visual%20Studio%20Marketplace&amp;labelColor=000&amp;logo=visual-studio-code&amp;logoColor=0098FF" alt="Visual Studio Marketplace Version" /></a>
 </p>
 
 <br>
