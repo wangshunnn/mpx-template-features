@@ -31,3 +31,11 @@
 - 鼠标放在可跳转的自定义组件标签上时会有对应的跳转提示，`cmd+单击` 或 `右键-转到定义` 可直接跳转到组件对应的文件。
 
   ![示例图片](./asset/mpx-features-tag-jump.png)
+
+<!-- ## 发布
+
+```shell
+# npm i vsce -g
+npm run pack
+npm run publish:patch
+``` -->

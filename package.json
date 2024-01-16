@@ -4,6 +4,7 @@
   "author": "wangshun",
   "license": "MIT",
   "version": "1.0.4",
+  "private": true,
   "bugs": "https://github.com/wangshunnn/mpx-template-features/issues",
   "homepage": "https://github.com/wangshunnn/mpx-template-features",
   "repository": {
@@ -22,6 +23,7 @@
     "definition"
   ],
   "engines": {
+    "node": ">=18",
     "vscode": "^1.75.0"
   },
   "activationEvents": [
@@ -59,7 +61,9 @@
     "watch": "tsc -b -w",
     "lint": "eslint ./client/src ./server/src --ext .ts,.tsx",
     "postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
-    "test": "sh ./scripts/e2e.sh"
+    "test": "sh ./scripts/e2e.sh",
+    "pack": "vsce package",
+    "publish:patch": "vsce publish patch"
   },
   "devDependencies": {
     "@types/mocha": "^9.1.0",
