@@ -106,6 +106,7 @@
     "postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
     "test": "sh ./scripts/e2e.sh",
     "pack": "vsce package",
+    "publish": "vsce publish",
     "publish:patch": "vsce publish patch"
   },
   "devDependencies": {
