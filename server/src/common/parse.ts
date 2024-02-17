@@ -50,6 +50,7 @@ export type SFCMapping = {
   stylusMapping: StylusMapping | null;
   scriptJsonMapping: ScriptJsonMapping | null;
   template2ScriptMapping: Template2ScriptMapping | null;
+  descriptor: SFCDescriptor | null;
 };
 
 export function parseSFC(uri: string, document?: TextDocument): SFCMapping {
@@ -80,6 +81,7 @@ export function parseSFC(uri: string, document?: TextDocument): SFCMapping {
       stylusMapping,
       scriptJsonMapping,
       template2ScriptMapping,
+      descriptor,
     };
     return sfcMapping;
   } catch (err) {
@@ -90,6 +92,7 @@ export function parseSFC(uri: string, document?: TextDocument): SFCMapping {
       stylusMapping: null,
       scriptJsonMapping: null,
       template2ScriptMapping: null,
+      descriptor: null,
     };
   }
 }

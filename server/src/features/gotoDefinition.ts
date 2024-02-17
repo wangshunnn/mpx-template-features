@@ -9,7 +9,6 @@ import {
   MapLocation,
   MappingValue,
   MatrixLocation,
-  formatUsingComponentsPath,
   reolveAbsolutePath,
 } from "../common/parse";
 import { mpxLocationMappingService } from "../common/mapping";

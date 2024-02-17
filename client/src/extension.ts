@@ -1,5 +1,6 @@
 import * as path from "path";
 import { workspace, ExtensionContext } from "vscode";
+import * as splitEditors from "./features/splitEditors";
 
 import {
   LanguageClient,
@@ -38,6 +39,10 @@ export function activate(context: ExtensionContext) {
   );
 
   client.start();
+
+  /** 注册客户端 features */
+  // 1. SFC 文件切分视图
+  splitEditors.register(context, client);
 }
 
 export function deactivate(): Thenable<void> | undefined {

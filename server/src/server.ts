@@ -10,10 +10,11 @@ import {
 } from "vscode-languageserver/node";
 
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { useDefinition } from "./features/gotoDefinition";
 import { mpxLocationMappingService } from "./common/mapping";
 import { debounce } from "./common/utils";
+import { useDefinition } from "./features/gotoDefinition";
 import { useDocumentLinks } from "./features/addDocumentLink";
+import { useSplitEditors } from "./features/splitEditors";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
@@ -151,6 +152,7 @@ const onDidChangeContentHandler = debounce(
 
 useDefinition(connection, documents);
 useDocumentLinks(connection, documents);
+useSplitEditors(connection);
 // useCompletion(connection);
 
 connection.onDidChangeWatchedFiles((_change) => {
