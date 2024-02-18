@@ -34,7 +34,7 @@
   ![示例图片](./asset/mpx-features-tag-jump.png)
 
 - 拆分 SFC 文件为多个编辑视图。点击顶部文件菜单栏的 Mpx logo 图标。
-  ![示例图片](./asset/mpx-feature-split-editors.png)
+  ![示例图片](./asset/mpx-features-split-editors.png)
 
 <!-- ## 发布
 vscode 插件发布流程：
