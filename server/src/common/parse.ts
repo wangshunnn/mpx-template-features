@@ -144,8 +144,13 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string) {
               if (!("value" in prop)) {
                 continue;
               }
-              if (prop.name === "class") {
-                const content = JSON.parse(prop.value?.loc?.source + "");
+              if (["class", "wx:class"].includes(prop.name)) {
+                let content: string;
+                try {
+                  content = JSON.parse(prop.value?.loc?.source + "");
+                } catch (_) {
+                  continue;
+                }
                 const _loc = prop.value?.loc;
                 const [key = "", offset = 0] = formatCotent(content);
                 if (key && _loc?.start?.offset) {
