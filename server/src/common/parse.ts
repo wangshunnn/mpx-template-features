@@ -273,7 +273,7 @@ export function getJsonScriptType(
 export function parseScriptlang(descriptor: SFCDescriptor, uri: string) {
   if (!hasScriptLang) return null;
 
-  if (descriptor.scriptSetup) {
+  if (descriptor.scriptSetup || !descriptor.script) {
     return null;
     // return parseScriptSetup(descriptor, uri);
   }
