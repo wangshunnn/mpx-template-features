@@ -42,4 +42,7 @@ vscode 插件发布流程：
 1. vsce login wangshun（登录过就不用再登录了，登录过期后需要重新申请vscode token，参考: https://dev.azure.com/wangshunnn/_usersSettings/tokens, https://code.visualstudio.com/api/working-with-extensions/publishing-extension#get-a-personal-access-token）
 2. npm run pack（打包 vsce package）
 3. npm run publish:patch（自动更新小版本并且发布 vsce publish patch）
+4. 发布成功后 push 代码和 tag
+5. git push origin main
+6. git push origin --tags v1.0.x
 -->
