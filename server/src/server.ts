@@ -15,12 +15,13 @@ import { debounce } from "./common/utils";
 import { useDefinition } from "./features/gotoDefinition";
 import { useDocumentLinks } from "./features/addDocumentLink";
 import { useSplitEditors } from "./features/splitEditors";
+import { useCompletion } from "./features/autoCompletion";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
-let hasDiagnosticRelatedInformationCapability = false;
+// let hasDiagnosticRelatedInformationCapability = false;
 
 let projectRootpathSolve: (value: string) => void;
 export const projectRootpathPromise: Promise<string> = new Promise(
@@ -37,11 +38,11 @@ connection.onInitialize((params: InitializeParams) => {
   hasWorkspaceFolderCapability = !!(
     capabilities.workspace && !!capabilities.workspace.workspaceFolders
   );
-  hasDiagnosticRelatedInformationCapability = !!(
-    capabilities.textDocument &&
-    capabilities.textDocument.publishDiagnostics &&
-    capabilities.textDocument.publishDiagnostics.relatedInformation
-  );
+  // hasDiagnosticRelatedInformationCapability = !!(
+  //   capabilities.textDocument &&
+  //   capabilities.textDocument.publishDiagnostics &&
+  //   capabilities.textDocument.publishDiagnostics.relatedInformation
+  // );
 
   const result: InitializeResult = {
     capabilities: {
@@ -53,10 +54,12 @@ connection.onInitialize((params: InitializeParams) => {
       documentLinkProvider: {
         resolveProvider: true,
       },
-      // // 自动补全
-      // completionProvider: {
-      //   resolveProvider: true,
-      // },
+      // 自动补全
+      completionProvider: {
+        resolveProvider: true,
+        // hack: 让 class 这种属性也能够支持自动补全
+        triggerCharacters: ["{", '"', "'"]
+      },
     },
   };
 
@@ -152,8 +155,8 @@ const onDidChangeContentHandler = debounce(
 
 useDefinition(connection, documents);
 useDocumentLinks(connection, documents);
+useCompletion(connection, documents);
 useSplitEditors(connection);
-// useCompletion(connection);
 
 connection.onDidChangeWatchedFiles((_change) => {
   connection.console.info("We received an file change event");

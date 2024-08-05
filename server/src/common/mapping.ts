@@ -12,14 +12,12 @@ class MpxLocationMappingService extends LRUCache<string, SFCMapping> {
   }
 
   public Initialize(uri: string): void {
-    // console.log("---> [MpxLocationMappingService] Initialize", uri);
     this.get(uri);
   }
 
   public override get(uri: string): SFCMapping {
     const cachedMapping = super.get(uri);
     if (cachedMapping) {
-      // console.log("---> [MpxLocationMappingService] Cached", uri);
       return cachedMapping;
     }
     const sfcMapping = parseSFC(uri);
@@ -28,7 +26,6 @@ class MpxLocationMappingService extends LRUCache<string, SFCMapping> {
   }
 
   public refresh(uri: string, document?: TextDocument): void {
-    // console.log("---> [MpxLocationMappingService] refresh", uri);
     const sfcMapping = parseSFC(uri, document);
     super.set(uri, sfcMapping);
   }

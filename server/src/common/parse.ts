@@ -3,6 +3,10 @@ import type {
   ExpressionStatement,
   ObjectExpression,
 } from "@babel/types";
+import { parse } from "@babel/parser";
+// @ts-expect-error ignore
+import traverse from "@babel/traverse";
+import * as t from "@babel/types";
 import {
   CompilerError,
   compileScript,
@@ -85,7 +89,7 @@ export function parseSFC(uri: string, document?: TextDocument): SFCMapping {
     };
     return sfcMapping;
   } catch (err) {
-    console.error("!!! ---> parseSFC error: ", err);
+    console.error("parseSFC error: ", err);
     return {
       templateMapping: null,
       scriptMapping: null,
@@ -152,18 +156,23 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string) {
                   continue;
                 }
                 const _loc = prop.value?.loc;
-                const [key = "", offset = 0] = formatCotent(content);
-                if (key && _loc?.start?.offset) {
-                  const locStart =
-                    _loc.start.offset + offset + templateLoc.start;
-                  classMapping.set(key + "-" + locStart, {
-                    key,
-                    loc: {
-                      start: locStart,
-                      end: locStart + key.length,
-                    },
-                  });
-                }
+                formatClass(content).forEach((res) => {
+                  const [key = "", offset = 0, isVariable = false] = res;
+                  if (key && _loc?.start?.offset) {
+                    const locStart =
+                      _loc.start.offset + offset + templateLoc.start;
+                    (isVariable ? variableMapping : classMapping).set(
+                      key + "-" + locStart,
+                      {
+                        key,
+                        loc: {
+                          start: locStart,
+                          end: locStart + key.length,
+                        },
+                      }
+                    );
+                  }
+                });
               } else if (
                 prop.name.startsWith("bind") ||
                 prop.name.startsWith("catch") ||
@@ -171,18 +180,20 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string) {
               ) {
                 const content = prop.value?.content;
                 const _loc = prop.value?.loc;
-                const [key = "", offset = 0] = formatCotent(content);
-                if (key && _loc?.start?.offset) {
-                  const locStart =
-                    _loc.start.offset + offset + templateLoc.start;
-                  variableMapping.set(key + "-" + locStart, {
-                    key,
-                    loc: {
-                      start: locStart,
-                      end: locStart + key.length,
-                    },
-                  });
-                }
+                formatCotent(content).forEach((res) => {
+                  const [key = "", offset = 0] = res;
+                  if (key && _loc?.start?.offset) {
+                    const locStart =
+                      _loc.start.offset + offset + templateLoc.start;
+                    variableMapping.set(key + "-" + locStart, {
+                      key,
+                      loc: {
+                        start: locStart,
+                        end: locStart + key.length,
+                      },
+                    });
+                  }
+                });
               }
             }
           }
@@ -204,7 +215,6 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string) {
   const tagLocationSort = [...tagMapping.entries()].map(([, v]) => v);
   const classLocationSort = [...classMapping.entries()].map(([, v]) => v);
   const variableLocationSort = [...variableMapping.entries()].map(([, v]) => v);
-  // console.log("---> parseTemplate: ", tagMapping.keys(), tagLocationSort);
   return {
     tagMapping,
     classMapping,
@@ -217,7 +227,7 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string) {
 }
 
 // TODO 增加对复杂表达式的解析
-export function formatCotent(content = ""): [string, number] | [] {
+export function formatCotent(content = ""): [string, number][] {
   if (!content) return [];
   let key = content.trim();
   if (key.startsWith("{{") && key.endsWith("}}")) {
@@ -228,7 +238,7 @@ export function formatCotent(content = ""): [string, number] | [] {
     key.startsWith('"') ||
     ["true", "false"].includes(key)
   ) {
-    return ["", 0];
+    return [["", 0]];
   }
   if (key.startsWith("!") || key.startsWith("+")) {
     key = key.slice(1);
@@ -243,7 +253,89 @@ export function formatCotent(content = ""): [string, number] | [] {
     key = key.split("[")[0];
   }
   const offset = content.indexOf(key);
-  return [key, offset];
+  return [[key, offset]];
+}
+
+export function formatClass(content = ""): [string, number, boolean][] {
+  if (!content) return [];
+  // 变量类型 class
+  if (content.startsWith("{{") && content.endsWith("}}")) {
+    const code = content.slice(2, -2);
+    try {
+      const res = parseJSExpression(code);
+      return res.map((i) => [i[0], i[1] + 2, i[2]]);
+    } catch (_) {
+      t.noop();
+    }
+  }
+
+  const keyLists = content.split(" ");
+  const ans: [string, number, boolean][] = [];
+  let idx = -1;
+  for (const k of keyLists) {
+    idx++;
+    if (!k) {
+      continue;
+    }
+    ans.push([k, idx, false]);
+    idx += k.length;
+  }
+  return ans;
+}
+
+function parseJSExpression(code: string = "") {
+  try {
+    const ans: [string, number, boolean][] = [];
+    const ast = parse(code, { sourceType: "script" });
+    traverse(ast, {
+      Program(path: any) {
+        const topLevelNode = path.node.body[0];
+        if (t.isBlockStatement(topLevelNode)) {
+          topLevelNode.body.forEach((s) => {
+            if (t.isLabeledStatement(s)) {
+              if (t.isIdentifier(s.label)) {
+                const l = s.label;
+                ans.push([l.name, l.start || 0, false]);
+              }
+              if (t.isExpressionStatement(s.body)) {
+                const exp = s.body.expression;
+                if (t.isIdentifier(exp)) {
+                  ans.push([exp.name, exp.start || 0, true]);
+                } else if (t.isMemberExpression(exp)) {
+                  const key = exp.object;
+                  if (t.isIdentifier(key)) {
+                    ans.push([key.name, key.start || 0, true]);
+                  }
+                } else if (t.isBinaryExpression(exp)) {
+                  [exp.left, exp.right].forEach((e) => {
+                    if (t.isIdentifier(e)) {
+                      ans.push([e.name, e.start || 0, true]);
+                    } else if (t.isMemberExpression(e)) {
+                      const key = e.object;
+                      if (t.isIdentifier(key)) {
+                        ans.push([key.name, key.start || 0, true]);
+                      }
+                    }
+                  });
+                }
+              }
+            } else if (t.isExpressionStatement(s)) {
+              if (t.isSequenceExpression(s.expression)) {
+                s.expression.expressions.forEach((e) => {
+                  if (t.isIdentifier(e)) {
+                    ans.push([e.name, e.start || 0, true]);
+                  }
+                });
+              }
+            }
+          });
+        }
+      },
+    });
+    return ans;
+  } catch (_) {
+    return [];
+  }
 }
 
 export function hasScriptLang(descriptor: SFCDescriptor) {
@@ -274,8 +366,7 @@ export function parseScriptlang(descriptor: SFCDescriptor, uri: string) {
   if (!hasScriptLang) return null;
 
   if (descriptor.scriptSetup || !descriptor.script) {
-    return null;
-    // return parseScriptSetup(descriptor, uri);
+    return parseScriptSetup(descriptor, uri);
   }
   return parseScriptLegacy(descriptor, uri);
 }
@@ -380,15 +471,51 @@ export function parseScriptLegacy(descriptor: SFCDescriptor, uri: string) {
       }
     }
   }
-  // console.log("---> dataMapping: ", dataMapping.keys());
   const computedMapping = new Map<string, MapLocation>();
   const methodsMapping = new Map<string, MapLocation>();
   return { dataMapping, computedMapping, methodsMapping };
 }
 
-export function parseScriptSetup(descriptor: SFCDescriptor, uri?: string) {
-  const setupMapping = new Map<string, MapLocation>();
-  return setupMapping;
+export function parseScriptSetup(descriptor: SFCDescriptor, uri: string) {
+  const dataMapping = new Map<string, MapLocation>();
+  const computedMapping = new Map<string, MapLocation>();
+  const methodsMapping = new Map<string, MapLocation>();
+
+  const compileSetupResult = descriptor.scriptSetup;
+  const setupLocOffset = compileSetupResult?.loc.start.offset;
+
+  // defineExpose
+  const [defineExpose, offset] = extractDefineExpose(
+    compileSetupResult?.content
+  );
+  const res: [string, number][] = parseJSExpression(
+    /** 去除最后一个逗号，避免报错 */
+    defineExpose.replace(/,(\s*})/, "$1")
+  )?.map((i /** `defineExpose(` 13个字符 */) => [i[0], i[1] + offset + 13]);
+  // console.log("[shun] --->", setupLocOffset, defineExpose, res);
+  res.forEach((res) => {
+    const [key = "", offset = 0] = res;
+    if (key && setupLocOffset) {
+      const dataLoc = {
+        start: offset + setupLocOffset,
+        end: offset + setupLocOffset + key.length,
+      };
+      dataMapping.set(key, dataLoc);
+    }
+  });
+
+  return { dataMapping, computedMapping, methodsMapping };
+}
+
+function extractDefineExpose(code: string = ""): [string, number] {
+  const regex = /defineExpose\(\s*({[^}]*})\s*\)/;
+  const match = code.match(regex);
+
+  if (match) {
+    return [match[1], match.index || 0];
+  } else {
+    return ["", 0];
+  }
 }
 
 export function parseStylus(descriptor: SFCDescriptor, uri?: string) {
@@ -440,7 +567,6 @@ export function parseStylus(descriptor: SFCDescriptor, uri?: string) {
   } catch (err) {
     console.error("---> traverseStylus error: ", err);
   }
-  // console.log("---> stylusMapping", [...stylusMapping.keys()]);
   return stylusMapping;
 }
 
@@ -480,8 +606,6 @@ export function parseScriptJson(
         jsonSource.lastIndexOf("\n")
       );
     }
-    // console.log("---> jsonScriptType", jsonScriptType);
-    // console.log("---> jsonSource", jsonSource);
     if (jsonScriptType === JSON_SCRIPT_TYPE.TYPE_JSON) {
       // <script type="application/json">
       const jsonUsingComponents = JSON.parse(jsonSource)?.usingComponents;
@@ -497,7 +621,6 @@ export function parseScriptJson(
             });
           }
         }
-        // console.log("---> jsonMapping", jsonMapping);
         return jsonMapping;
       }
     } else {
@@ -563,6 +686,5 @@ export function genTemplate2ScriptMapping(
   //     mapping.set(mapKey, mappingLoc);
   //   }
   // }
-  // console.log("---> genTemplate2ScriptMapping: ", mapping);
   return mapping;
 }
