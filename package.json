@@ -107,6 +107,8 @@
     "test": "sh ./scripts/e2e.sh",
     "pack": "vsce package",
     "publish": "vsce publish",
+    "publish:major": "vsce publish major",
+    "publish:minor": "vsce publish minor",
     "publish:patch": "vsce publish patch"
   },
   "devDependencies": {
