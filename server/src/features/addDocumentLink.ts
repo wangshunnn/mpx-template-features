@@ -49,23 +49,23 @@ function documentLinkProvider(
       });
     }
 
-    const classLinkList: DocumentLink[] = [];
-    if (stylusMapping) {
-      [...classMapping.entries()].forEach(([_key, v]) => {
-        const key = _key.substring(0, _key.lastIndexOf("-"));
-        if (stylusMapping.has(key)) {
-          const { loc } = v;
-          const link: DocumentLink = {
-            range: {
-              start: document.positionAt(loc.start),
-              end: document.positionAt(loc.end),
-            },
-            tooltip: "转到 style 中的样式",
-          };
-          classLinkList.push(link);
-        }
-      });
-    }
+    // const classLinkList: DocumentLink[] = [];
+    // if (stylusMapping) {
+    //   [...classMapping.entries()].forEach(([_key, v]) => {
+    //     const key = _key.substring(0, _key.lastIndexOf("-"));
+    //     if (stylusMapping.has(key)) {
+    //       const { loc } = v;
+    //       const link: DocumentLink = {
+    //         range: {
+    //           start: document.positionAt(loc.start),
+    //           end: document.positionAt(loc.end),
+    //         },
+    //         tooltip: "转到 style 中的样式",
+    //       };
+    //       classLinkList.push(link);
+    //     }
+    //   });
+    // }
 
     const variableLinkList: DocumentLink[] = [];
     if (scriptMapping) {
@@ -89,7 +89,7 @@ function documentLinkProvider(
       });
     }
 
-    return [...tagLinkList, ...classLinkList, ...variableLinkList];
+    return [...tagLinkList, ...variableLinkList];
   };
 }
 

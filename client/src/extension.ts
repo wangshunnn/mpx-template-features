@@ -1,13 +1,26 @@
 import * as path from "path";
-import { workspace, ExtensionContext } from "vscode";
+import {
+  DecorationRangeBehavior,
+  window,
+  workspace,
+  ExtensionContext,
+  Range,
+} from "vscode";
 import * as splitEditors from "./features/splitEditors";
-
 import {
   LanguageClient,
   LanguageClientOptions,
   ServerOptions,
   TransportKind,
 } from "vscode-languageclient/node";
+
+export interface Token {
+  key: string;
+  loc: {
+    start: number;
+    end: number;
+  };
+}
 
 let client: LanguageClient;
 
@@ -40,9 +53,51 @@ export function activate(context: ExtensionContext) {
 
   client.start();
 
-  /** 注册客户端 features */
-  // 1. SFC 文件切分视图
+  /** SFC 文件切分视图 */
   splitEditors.register(context, client);
+
+  const UnderlineDecoration = window.createTextEditorDecorationType({
+    textDecoration: "none; border-bottom: 1px dashed currentColor",
+    rangeBehavior: DecorationRangeBehavior.ClosedClosed,
+  });
+  // const borderRadius = "50%";
+  // const colorDecoration = window.createTextEditorDecorationType({
+  //   before: {
+  //     width: "0.9em",
+  //     height: "0.9em",
+  //     contentText: " ",
+  //     border: "1px solid",
+  //     margin: `auto 0.2em auto 0;vertical-align: middle;border-radius: ${borderRadius};`,
+  //   },
+  //   dark: {
+  //     before: {
+  //       borderColor: "#eeeeee50",
+  //     },
+  //   },
+  //   light: {
+  //     before: {
+  //       borderColor: "#00000050",
+  //     },
+  //   },
+  // });
+
+  /** 获取所有 token 分词的范围 */
+  client.onRequest("custom/tokens", (params) => {
+    const editor = window.visibleTextEditors.find(
+      (e) => e.document.uri.toString() === params.uri
+    );
+    if (editor) {
+      const { styleTokens } = params.tokens;
+      const classTokensRanges = styleTokens.map((token: Token) => {
+        const { loc } = token || {};
+        return new Range(
+          editor.document.positionAt(loc?.start),
+          editor.document.positionAt(loc?.end)
+        );
+      });
+      editor.setDecorations(UnderlineDecoration, classTokensRanges);
+    }
+  });
 }
 
 export function deactivate(): Thenable<void> | undefined {

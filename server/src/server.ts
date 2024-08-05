@@ -58,8 +58,9 @@ connection.onInitialize((params: InitializeParams) => {
       completionProvider: {
         resolveProvider: true,
         // hack: 让 class 这种属性也能够支持自动补全
-        triggerCharacters: ["{", '"', "'"]
+        triggerCharacters: ["{", '"', "'"],
       },
+      experimental: "",
     },
   };
 
@@ -149,6 +150,17 @@ const onDidChangeContentHandler = debounce(
   (e: TextDocumentChangeEvent<TextDocument>) => {
     const uri = e.document.uri;
     mpxLocationMappingService.refresh(uri, e.document);
+
+    const { templateMapping, stylusMapping } =
+      mpxLocationMappingService.get(uri);
+
+    const styleTokens = templateMapping?.classLocationSort.filter(({ key }) =>
+      stylusMapping?.has(key)
+    );
+    connection.sendRequest("custom/tokens", {
+      uri,
+      tokens: { styleTokens },
+    });
   },
   200
 );

@@ -256,6 +256,8 @@ export function formatCotent(content = ""): [string, number][] {
   return [[key, offset]];
 }
 
+export const defaultTagRE = /\{\{((?:.|\r?\n)+?)\}\}/g;
+
 export function formatClass(content = ""): [string, number, boolean][] {
   if (!content) return [];
   // 变量类型 class
@@ -269,17 +271,43 @@ export function formatClass(content = ""): [string, number, boolean][] {
     }
   }
 
-  const keyLists = content.split(" ");
   const ans: [string, number, boolean][] = [];
-  let idx = -1;
-  for (const k of keyLists) {
-    idx++;
-    if (!k) {
-      continue;
+
+  // refer from vue2 parseText :)
+  let match: RegExpExecArray | null, index: number;
+  let lastIndex = 0;
+  while ((match = defaultTagRE.exec(content))) {
+    index = match.index;
+    // push text token
+    if (index > lastIndex) {
+      parseText(content.slice(lastIndex, index), lastIndex);
     }
-    ans.push([k, idx, false]);
-    idx += k.length;
+    // jump tag token
+    lastIndex = index + match[0].length;
   }
+  if (lastIndex < content.length) {
+    parseText(content.slice(lastIndex), lastIndex);
+  }
+
+  if (ans.length > 0) {
+    return ans;
+  }
+
+  function parseText(content: string, start: number) {
+    const keyLists = content.split(" ");
+    let idx = -1;
+    for (const k of keyLists) {
+      idx++;
+      if (!k) {
+        continue;
+      }
+      ans.push([k, idx + start, false]);
+      idx += k.length;
+    }
+  }
+
+  parseText(content, 0);
+
   return ans;
 }
 
