@@ -46,12 +46,17 @@ export type ScriptMapping = {
   methodsMapping: ScriptMappingItem;
 } | null;
 export type StylusMapping = Map<string, MatrixLocation[]>;
+export type StylusPropsMapping = Map<
+  string,
+  { start: MatrixLocation; end: MatrixLocation }
+>;
 export type ScriptJsonMapping = Map<string, JsonMappingValue>;
 export type Template2ScriptMapping = Map<string, MapLocation>;
 export type SFCMapping = {
   templateMapping: TemplateMapping | null;
   scriptMapping: ScriptMapping | null;
   stylusMapping: StylusMapping | null;
+  stylusPropsMapping: StylusPropsMapping | null;
   scriptJsonMapping: ScriptJsonMapping | null;
   template2ScriptMapping: Template2ScriptMapping | null;
   descriptor: SFCDescriptor | null;
@@ -69,7 +74,7 @@ export function parseSFC(uri: string, document?: TextDocument): SFCMapping {
     const { descriptor, errors } = compileSFCResult;
     const templateMapping = parseTemplate(descriptor, uri);
     const scriptMapping = parseScriptlang(descriptor, uri);
-    const stylusMapping = parseStylus(descriptor, uri);
+    const { stylusMapping, stylusPropsMapping } = parseStylus(descriptor, uri);
     const scriptJsonMapping = parseScriptJson(
       descriptor,
       errors as CompilerError[],
@@ -83,6 +88,7 @@ export function parseSFC(uri: string, document?: TextDocument): SFCMapping {
       templateMapping,
       scriptMapping,
       stylusMapping,
+      stylusPropsMapping,
       scriptJsonMapping,
       template2ScriptMapping,
       descriptor,
@@ -94,6 +100,7 @@ export function parseSFC(uri: string, document?: TextDocument): SFCMapping {
       templateMapping: null,
       scriptMapping: null,
       stylusMapping: null,
+      stylusPropsMapping: null,
       scriptJsonMapping: null,
       template2ScriptMapping: null,
       descriptor: null,
@@ -324,8 +331,7 @@ function parseJSExpression(code: string = "") {
               if (t.isIdentifier(s.label)) {
                 const l = s.label;
                 ans.push([l.name, l.start || 0, false]);
-              }
-              if (t.isExpressionStatement(s.body)) {
+              } else if (t.isExpressionStatement(s.body)) {
                 const exp = s.body.expression;
                 if (t.isIdentifier(exp)) {
                   ans.push([exp.name, exp.start || 0, true]);
@@ -348,12 +354,15 @@ function parseJSExpression(code: string = "") {
                 }
               }
             } else if (t.isExpressionStatement(s)) {
-              if (t.isSequenceExpression(s.expression)) {
-                s.expression.expressions.forEach((e) => {
+              const exp = s.expression;
+              if (t.isSequenceExpression(exp)) {
+                exp.expressions.forEach((e) => {
                   if (t.isIdentifier(e)) {
                     ans.push([e.name, e.start || 0, true]);
                   }
                 });
+              } else if (t.isIdentifier(exp)) {
+                ans.push([exp.name, exp.start || 0, true]);
               }
             }
           });
@@ -520,7 +529,7 @@ export function parseScriptSetup(descriptor: SFCDescriptor, uri: string) {
     /** 去除最后一个逗号，避免报错 */
     defineExpose.replace(/,(\s*})/, "$1")
   )?.map((i /** `defineExpose(` 13个字符 */) => [i[0], i[1] + offset + 13]);
-  // console.log("[shun] --->", setupLocOffset, defineExpose, res);
+  // console.log("[shun] --->", setupLocOffset, res);
   res.forEach((res) => {
     const [key = "", offset = 0] = res;
     if (key && setupLocOffset) {
@@ -548,8 +557,11 @@ function extractDefineExpose(code: string = ""): [string, number] {
 
 export function parseStylus(descriptor: SFCDescriptor, uri?: string) {
   const stylusMapping = new Map<string, MatrixLocation[]>();
+  const stylusPropsMapping: StylusPropsMapping = new Map();
+  let styleSourceCode: string = "";
+
   if (descriptor.styles?.[0]?.lang !== "stylus") {
-    return stylusMapping;
+    return { stylusMapping, stylusPropsMapping, styleSourceCode };
   }
   const styles = descriptor.styles[0];
   const stylusMatrixLoc = {
@@ -557,17 +569,29 @@ export function parseStylus(descriptor: SFCDescriptor, uri?: string) {
     column: styles.loc?.start?.column,
   };
 
+  const getClassName = (seg: any[] = []) => {
+    if (seg[0]?.string === "." && seg[1]?.string) {
+      return seg[1];
+    }
+    if (seg[0]?.string === "&" && seg[1]?.string === "." && seg[2]?.string) {
+      return seg[2];
+    }
+    return [];
+  };
+
+  let last: any = null;
   function dfsTraverseStylusNode(nodes: any) {
     if (!nodes.length) return null;
     for (const node of nodes) {
       if (node.nodes?.length > 0) {
-        const segments = node.nodes[0]?.segments || [];
-        if (
-          segments.length >= 2 &&
-          segments[0]?.string === "." &&
-          segments[1]?.string
-        ) {
-          const item = segments[1];
+        const classNamesNodes = node.nodes
+          .map((node: any) => getClassName(node?.segments))
+          .filter((i: any) => i.string || i.val);
+        if (!classNamesNodes.length) {
+          continue;
+        }
+        const [endLine] = [node?.lineno, node?.column];
+        for (const item of classNamesNodes) {
           const key = item.string || item.val;
           if (!key) continue;
           const loc = {
@@ -579,23 +603,58 @@ export function parseStylus(descriptor: SFCDescriptor, uri?: string) {
           } else {
             stylusMapping.set(key, [loc]);
           }
+          if (last) {
+            last?.forEach((item: any) => {
+              const key = item.string || item.val;
+              if (key) {
+                stylusPropsMapping.set(key, {
+                  start: {
+                    line: item.lineno + stylusMatrixLoc.line - 1,
+                    column: item.column - 1,
+                  },
+                  end: {
+                    line: endLine + stylusMatrixLoc.line - 1,
+                    column: 0,
+                  },
+                });
+              }
+            });
+            last = null;
+          }
         }
+        last = classNamesNodes;
       }
-      if (node.block?.nodes?.length > 0) {
+      if (node.block?.nodes.length > 0) {
         dfsTraverseStylusNode(node.block.nodes);
       }
     }
   }
   try {
-    const styleSource = descriptor.styles[0].content;
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    const compileStylusResult = new stylus.Parser(styleSource).parse();
+    styleSourceCode = descriptor.styles[0].content;
+    // @ts-expect-error ignore
+    const compileStylusResult = new stylus.Parser(styleSourceCode).parse();
     dfsTraverseStylusNode(compileStylusResult?.nodes);
+    if (last) {
+      last?.forEach((item: any) => {
+        const key = item.string || item.val;
+        if (key) {
+          stylusPropsMapping.set(key, {
+            start: {
+              line: item.lineno + stylusMatrixLoc.line - 1,
+              column: item.column - 1,
+            },
+            end: {
+              line: compileStylusResult.lineno + stylusMatrixLoc.line - 1,
+              column: compileStylusResult.column,
+            },
+          });
+        }
+      });
+    }
   } catch (err) {
     console.error("---> traverseStylus error: ", err);
   }
-  return stylusMapping;
+  return { stylusMapping, stylusPropsMapping, styleSourceCode };
 }
 
 export function parseScriptJson(

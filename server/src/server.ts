@@ -16,6 +16,7 @@ import { useDefinition } from "./features/gotoDefinition";
 import { useDocumentLinks } from "./features/addDocumentLink";
 import { useSplitEditors } from "./features/splitEditors";
 import { useCompletion } from "./features/autoCompletion";
+import { useHover } from "./features/hover";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
@@ -60,6 +61,9 @@ connection.onInitialize((params: InitializeParams) => {
         // hack: 让 class 这种属性也能够支持自动补全
         triggerCharacters: ["{", '"', "'"],
       },
+      // hover
+      hoverProvider: true,
+      // experimental
       experimental: "",
     },
   };
@@ -157,7 +161,7 @@ const onDidChangeContentHandler = debounce(
     const styleTokens = templateMapping?.classLocationSort.filter(({ key }) =>
       stylusMapping?.has(key)
     );
-    connection.sendRequest("custom/tokens", {
+    connection.sendRequest("mpx/tokens", {
       uri,
       tokens: { styleTokens },
     });
@@ -165,9 +169,11 @@ const onDidChangeContentHandler = debounce(
   200
 );
 
+/** Middleware Features */
 useDefinition(connection, documents);
 useDocumentLinks(connection, documents);
 useCompletion(connection, documents);
+useHover(connection, documents);
 useSplitEditors(connection);
 
 connection.onDidChangeWatchedFiles((_change) => {

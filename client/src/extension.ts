@@ -82,7 +82,7 @@ export function activate(context: ExtensionContext) {
   // });
 
   /** 获取所有 token 分词的范围 */
-  client.onRequest("custom/tokens", (params) => {
+  client.onRequest("mpx/tokens", (params) => {
     const editor = window.visibleTextEditors.find(
       (e) => e.document.uri.toString() === params.uri
     );

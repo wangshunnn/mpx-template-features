@@ -7,13 +7,12 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 import {
   MapLocation,
-  MappingValue,
   MatrixLocation,
   reolveAbsolutePath,
 } from "../common/parse";
 import { mpxLocationMappingService } from "../common/mapping";
 import path = require("path");
-import { uriToFileName } from "../common/utils";
+import { binarySearch, uriToFileName } from "../common/utils";
 import { projectRootpathPromise } from "../server";
 
 export async function useDefinition(
@@ -30,7 +29,7 @@ function definitionProvider(
   rooPath?: string
 ): (param: TextDocumentPositionParams) => Definition | null {
   return ({ textDocument, position }) => {
-    const document: TextDocument | undefined = documents.get(textDocument.uri);
+    const document = documents.get(textDocument.uri);
     const fileUri = document?.uri;
     if (!document || !fileUri) return null;
 
@@ -143,25 +142,6 @@ export function findDefinition(
       };
     }
     return null;
-  }
-  return null;
-}
-
-export function binarySearch(
-  arr: MappingValue[],
-  target: number
-): MappingValue | null {
-  let left = 0,
-    right = arr.length - 1;
-  while (left <= right) {
-    const mid = Math.floor((right - left) / 2) + left;
-    if (target >= arr[mid].loc.start && target <= arr[mid].loc.end) {
-      return arr[mid];
-    } else if (arr[mid].loc.end < target) {
-      left = mid + 1;
-    } else {
-      right = mid - 1;
-    }
   }
   return null;
 }

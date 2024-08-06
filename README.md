@@ -17,8 +17,9 @@
    - template 中属性的 `变量、方法` 支持跳转到 `<script> 中的定义位置`
    - template 中的 `class 类名` 支持跳转到 `<style> 样式脚本对应位置`
    - template 中的 `自定义的组件标签名` 支持跳转到 `自定义组件所在的文件`
-2. 🚀 **自动补全**：注意 class 等属性值默认不支持自动补全，可以通过 `{`、`'`、`"` 等符号主动唤起自动触发
-3. 🚀 **视图拆分**：支持拆分 SFC 文件为多个编辑视图。比如同时在左侧/上侧编写 `<script>`，右侧/下侧编写 `<template>`
+2. 🚀 **Hover**：`class 类名` hover 展示对应的 style 样式片段
+3. 🚀 **自动补全**：注意 class 等属性值默认不支持自动补全，可以通过 `{`、`'`、`"` 等符号主动唤起自动触发
+4. 🚀 **视图拆分**：支持拆分 SFC 文件为多个编辑视图。比如同时在左侧/上侧编写 `<script>`，右侧/下侧编写 `<template>`
 
 ## 演示
 
@@ -26,16 +27,11 @@
 
 ## 示例
 
-- 鼠标放在可跳转的类名、变量、方法名时会有对应的跳转提示，`cmd+单击` 或 `右键-转到定义` 可直接跳转到对应定义位置，`class` 类名点击则会跳转到 `<style>` 中对应的样式。
+<img src="./asset/mpx-features-demo.png" alt="hover class" width="700"/>
 
-  ![示例图片](./asset/mpx-features-demo.png)
+<img src="./asset/mpx-features-tag-jump.png" alt="定义跳转" width="700"/>
 
-- 鼠标放在可跳转的自定义组件标签上时会有对应的跳转提示，`cmd+单击` 或 `右键-转到定义` 可直接跳转到组件对应的文件。
-
-  ![示例图片](./asset/mpx-features-tag-jump.png)
-
-- 拆分 SFC 文件为多个编辑视图。点击顶部文件菜单栏的 Mpx logo 图标。
-  ![示例图片](./asset/mpx-features-split-editors.png)
+<img src="./asset/mpx-features-split-editors.png" alt="视图拆分" width="700"/>
 
 <!-- ## 发布
 vscode 插件发布流程：
