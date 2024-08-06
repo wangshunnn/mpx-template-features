@@ -41,7 +41,15 @@ function hoverProvider(
         character: targetRange.end.column,
       },
     };
-    const contents = document.getText(range);
+    const text = document.getText(range);
+    if (!text) return null;
+
+    // format
+    const contents = text
+      ?.split("\n")
+      .map((i) => i.trim())
+      .filter(Boolean)
+      .join("\n  ");
     const markdown: MarkupContent = {
       kind: MarkupKind.Markdown,
       value: ["```stylus", "/* cmd+单击 跳转查看 */", contents, "```"].join(

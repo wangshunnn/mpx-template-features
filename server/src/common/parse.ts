@@ -558,15 +558,17 @@ function extractDefineExpose(code: string = ""): [string, number] {
 export function parseStylus(descriptor: SFCDescriptor, uri?: string) {
   const stylusMapping = new Map<string, MatrixLocation[]>();
   const stylusPropsMapping: StylusPropsMapping = new Map();
-  let styleSourceCode: string = "";
+  const styleSource = descriptor.styles?.find(
+    (item) => item.lang === "stylus" && item.content && !item.src
+  );
 
-  if (descriptor.styles?.[0]?.lang !== "stylus") {
-    return { stylusMapping, stylusPropsMapping, styleSourceCode };
+  if (!styleSource) {
+    return { stylusMapping, stylusPropsMapping };
   }
-  const styles = descriptor.styles[0];
+
   const stylusMatrixLoc = {
-    line: styles.loc?.start?.line,
-    column: styles.loc?.start?.column,
+    line: styleSource.loc?.start?.line,
+    column: styleSource.loc?.start?.column,
   };
 
   const getClassName = (seg: any[] = []) => {
@@ -630,9 +632,8 @@ export function parseStylus(descriptor: SFCDescriptor, uri?: string) {
     }
   }
   try {
-    styleSourceCode = descriptor.styles[0].content;
     // @ts-expect-error ignore
-    const compileStylusResult = new stylus.Parser(styleSourceCode).parse();
+    const compileStylusResult = new stylus.Parser(styleSource.content).parse();
     dfsTraverseStylusNode(compileStylusResult?.nodes);
     if (last) {
       last?.forEach((item: any) => {
@@ -654,7 +655,7 @@ export function parseStylus(descriptor: SFCDescriptor, uri?: string) {
   } catch (err) {
     console.error("---> traverseStylus error: ", err);
   }
-  return { stylusMapping, stylusPropsMapping, styleSourceCode };
+  return { stylusMapping, stylusPropsMapping };
 }
 
 export function parseScriptJson(
