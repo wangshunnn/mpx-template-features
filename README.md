@@ -23,9 +23,7 @@
 
 ## 演示
 
-![示例动画](./asset/mpx-video.gif)
-
-## 示例
+<!-- ![示例动画](./asset/mpx-video.gif) -->
 
 <img src="./asset/mpx-features-demo.png" alt="hover class" width="700"/>
 

@@ -59,7 +59,7 @@ connection.onInitialize((params: InitializeParams) => {
       completionProvider: {
         resolveProvider: true,
         // hack: 让 class 这种属性也能够支持自动补全
-        triggerCharacters: ["{", '"', "'"],
+        triggerCharacters: ["{", "(", '"', "'"],
       },
       // hover
       hoverProvider: true,
