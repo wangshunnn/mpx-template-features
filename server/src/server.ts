@@ -14,7 +14,7 @@ import { mpxLocationMappingService } from "./common/mapping";
 import { debounce } from "./common/utils";
 import { useDefinition } from "./features/gotoDefinition";
 import { useDocumentLinks } from "./features/addDocumentLink";
-import { useSplitEditors } from "./features/splitEditors";
+import { sendRequestTokens, useOnRequest } from "./features/onRequest";
 import { useCompletion } from "./features/autoCompletion";
 import { useHover } from "./features/hover";
 
@@ -154,27 +154,17 @@ const onDidChangeContentHandler = debounce(
   (e: TextDocumentChangeEvent<TextDocument>) => {
     const uri = e.document.uri;
     mpxLocationMappingService.refresh(uri, e.document);
-
-    const { templateMapping, stylusMapping } =
-      mpxLocationMappingService.get(uri);
-
-    const styleTokens = templateMapping?.classLocationSort.filter(({ key }) =>
-      stylusMapping?.has(key)
-    );
-    connection.sendRequest("mpx/tokens", {
-      uri,
-      tokens: { styleTokens },
-    });
+    sendRequestTokens(connection, uri);
   },
   200
 );
 
 /** Middleware Features */
+useOnRequest(connection);
 useDefinition(connection, documents);
 useDocumentLinks(connection, documents);
 useCompletion(connection, documents);
 useHover(connection, documents);
-useSplitEditors(connection);
 
 connection.onDidChangeWatchedFiles((_change) => {
   connection.console.info("We received an file change event");

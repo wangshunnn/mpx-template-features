@@ -81,7 +81,7 @@ export function activate(context: ExtensionContext) {
   //   },
   // });
 
-  /** 获取所有 token 分词的范围 */
+  // receive from server
   client.onRequest("mpx/tokens", (params) => {
     const editor = window.visibleTextEditors.find(
       (e) => e.document.uri.toString() === params.uri
@@ -96,6 +96,14 @@ export function activate(context: ExtensionContext) {
         );
       });
       editor.setDecorations(UnderlineDecoration, classTokensRanges);
+    }
+  });
+
+  // switch Tab file
+  window.onDidChangeActiveTextEditor((editor) => {
+    if (editor) {
+      const uri = editor.document.uri.toString();
+      client.sendRequest("mpx/switchTabFile", uri);
     }
   });
 }

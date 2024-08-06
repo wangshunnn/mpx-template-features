@@ -58,7 +58,6 @@ function hoverProvider(
     };
     return {
       contents: markdown,
-      range,
     };
   };
 }
