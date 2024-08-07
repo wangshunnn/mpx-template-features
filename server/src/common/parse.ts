@@ -590,7 +590,6 @@ function extractSetupGlobalFunctionExpression(
   return (code: string = ""): [string, number] => {
     let _funcName: `${SETUP_GLOBAL_FUNCTION_NAME}${"({" | "<{"}`;
     let start, end, stack, pairs;
-    let isTS = false;
 
     if ((start = code.indexOf(`${funcName}({`)) !== -1) {
       _funcName = `${funcName}({`;
@@ -606,7 +605,6 @@ function extractSetupGlobalFunctionExpression(
         [">", "<"],
         ["}", "{"],
       ]);
-      isTS = true;
     } else {
       return ["", 0];
     }
