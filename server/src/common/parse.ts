@@ -422,9 +422,9 @@ export function parseScriptLegacy(descriptor: SFCDescriptor, uri: string) {
   const compileScriptResult = compileScript(descriptor, { id: uri });
   const component = compileScriptResult.scriptAst?.find(
     (item) =>
-      item.type === "ExpressionStatement" &&
-      item.expression.type === "CallExpression" &&
-      item.expression.callee.type === "Identifier" &&
+      t.isExpressionStatement(item) &&
+      t.isCallExpression(item.expression) &&
+      t.isIdentifier(item.expression.callee) &&
       ["createPage", "createComponent"].includes(item.expression.callee.name)
   );
   if (!component) return null;
@@ -441,16 +441,16 @@ export function parseScriptLegacy(descriptor: SFCDescriptor, uri: string) {
   // traverse(compileScriptResult.scriptAst, )
   for (const prop of (componentExpression.arguments[0] as ObjectExpression)
     .properties) {
-    if (prop.type === "ObjectProperty" && prop.key.type === "Identifier") {
+    if (t.isObjectProperty(prop) && t.isIdentifier(prop.key)) {
       const propsName = prop.key.name;
       switch (propsName) {
         case "properties":
         case "data": {
-          if (prop.value.type === "ObjectExpression") {
+          if (t.isObjectExpression(prop.value)) {
             const dataExpression = prop.value.properties;
             dataExpression.forEach((item) => {
-              if (item.type === "ObjectProperty") {
-                if (item.key.type === "Identifier") {
+              if (t.isObjectProperty(item)) {
+                if (t.isIdentifier(item.key)) {
                   const dataKey = item.key.name;
                   const dataLoc = {
                     start: item.key.start! + scriptOffset,
@@ -460,7 +460,7 @@ export function parseScriptLegacy(descriptor: SFCDescriptor, uri: string) {
                     dataKey,
                     dataLoc
                   );
-                } else if (item.key.type === "StringLiteral") {
+                } else if (t.isStringLiteral(item.key)) {
                   const dataKey = item.key.value;
                   const dataLoc = {
                     start: item.key.start! + scriptOffset + 1,
@@ -471,7 +471,7 @@ export function parseScriptLegacy(descriptor: SFCDescriptor, uri: string) {
                     dataLoc
                   );
                 } else {
-                  console.warn("[debug warning]", item.key.type);
+                  console.warn("[debug warning] properties & data", item);
                 }
               }
             });
@@ -483,11 +483,11 @@ export function parseScriptLegacy(descriptor: SFCDescriptor, uri: string) {
           if (prop.value.type === "ObjectExpression") {
             const methodsProps = prop.value.properties;
             methodsProps.forEach((item) => {
-              if (item.type === "SpreadElement") {
+              if (t.isSpreadElement(item)) {
                 if (
-                  item.argument.type === "CallExpression" &&
-                  item.argument.callee.type === "MemberExpression" &&
-                  item.argument.callee.property.type === "Identifier" &&
+                  t.isCallExpression(item.argument) &&
+                  t.isMemberExpression(item.argument.callee) &&
+                  t.isIdentifier(item.argument.callee.property) &&
                   [
                     "mapState",
                     "mapMutations",
@@ -495,10 +495,10 @@ export function parseScriptLegacy(descriptor: SFCDescriptor, uri: string) {
                     "mapGetters",
                   ].includes(item.argument.callee.property.name)
                 ) {
-                  if (item.argument.arguments[0].type === "ArrayExpression") {
+                  if (t.isArrayExpression(item.argument.arguments[0])) {
                     const elements = item.argument.arguments[0].elements;
                     elements.forEach((element) => {
-                      if (element?.type === "StringLiteral") {
+                      if (t.isStringLiteral(element)) {
                         const dataKey = element.value;
                         const dataLoc = {
                           start: element.start! + scriptOffset + 1,
@@ -509,8 +509,8 @@ export function parseScriptLegacy(descriptor: SFCDescriptor, uri: string) {
                     });
                   }
                 }
-              } else if (item.type === "ObjectMethod") {
-                if (item.key.type === "Identifier") {
+              } else if (t.isObjectMethod(item) || t.isObjectProperty(item)) {
+                if (t.isIdentifier(item.key)) {
                   const dataKey = item.key.name;
                   const dataLoc = {
                     start: item.key.start! + scriptOffset,
@@ -519,7 +519,7 @@ export function parseScriptLegacy(descriptor: SFCDescriptor, uri: string) {
                   scriptDataMapping[propsName].set(dataKey, dataLoc);
                 }
               } else {
-                console.warn("[debug warning]", item.type);
+                console.warn("[debug warning] computed & methods", item);
               }
             });
           }
@@ -815,7 +815,7 @@ export function parseScriptJson(
           item?.loc?.source?.startsWith('<script name="json">') ||
           item?.loc?.source?.startsWith('<script type="application/json">')
       );
-      jsonSource = jsonDescriptor?.loc?.source as string;
+      jsonSource = jsonDescriptor?.loc?.source || "";
       const str = jsonSource?.slice(0, jsonSource.indexOf("\n")) || "";
       if (str.includes("type") && str.includes("application/json")) {
         jsonScriptType = JSON_SCRIPT_TYPE.TYPE_JSON;
