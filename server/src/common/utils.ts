@@ -26,3 +26,4 @@ export function binarySearch(
 }
 
 export const noop = () => {};
+export type ValueOf<T> = T[keyof T];

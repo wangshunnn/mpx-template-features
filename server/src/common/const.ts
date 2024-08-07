@@ -23,3 +23,8 @@ export const enum SETUP_GLOBAL_FUNCTION_NAME {
   DEFINE_PROPS = "defineProps",
   DEFINE_EXPOSE = "defineExpose",
 }
+
+export const enum JSON_SCRIPT_TYPE {
+  NAME_JSON = "name-json",
+  TYPE_JSON = "type-json",
+}

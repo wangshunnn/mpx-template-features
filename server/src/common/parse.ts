@@ -19,8 +19,9 @@ import * as fs from "fs";
 import * as path from "path";
 import * as stylus from "stylus";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { noop, uriToFileName } from "./utils";
+import { noop, uriToFileName, ValueOf } from "./utils";
 import {
+  JSON_SCRIPT_TYPE,
   SCRIPT_CREATE_COMPONENT_PROPS,
   SETUP_GLOBAL_FUNCTION_NAME,
 } from "./const";
@@ -389,15 +390,7 @@ export function hasScriptLang(descriptor: SFCDescriptor) {
   return descriptor.scriptSetup || !getJsonScriptType(descriptor);
 }
 
-export const JSON_SCRIPT_TYPE = {
-  NAME_JSON: "name-json",
-  TYPE_JSON: "type-json",
-} as const;
-export type ValueOf<T> = T[keyof T];
-
-export function getJsonScriptType(
-  descriptor: SFCDescriptor
-): ValueOf<typeof JSON_SCRIPT_TYPE> | null {
+export function getJsonScriptType(descriptor: SFCDescriptor) {
   if ((descriptor.script?.attrs?.name + "").toLowerCase().includes("json")) {
     return JSON_SCRIPT_TYPE.NAME_JSON;
   } else if (
@@ -580,7 +573,7 @@ export function parseScriptSetup(descriptor: SFCDescriptor, uri: string) {
   return { setupDataMapping };
 }
 
-function extractSetupGlobalFunctionExpression(
+export function extractSetupGlobalFunctionExpression(
   funcName: SETUP_GLOBAL_FUNCTION_NAME
 ) {
   if (!funcName) {
@@ -633,7 +626,7 @@ function extractSetupGlobalFunctionExpression(
   };
 }
 
-function parseSetupGlobalFunctionExpression(
+export function parseSetupGlobalFunctionExpression(
   funcName: SETUP_GLOBAL_FUNCTION_NAME
 ) {
   if (!funcName) {
