@@ -95,7 +95,7 @@ export function parseSFC(uri: string, document?: TextDocument): SFCMapping {
     };
     return sfcMapping;
   } catch (err) {
-    console.error("parseSFC error: ", err);
+    console.warn("----> warning: parse SFC failed");
     return {
       templateMapping: null,
       scriptMapping: null,

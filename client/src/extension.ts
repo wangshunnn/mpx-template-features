@@ -87,7 +87,7 @@ export function activate(context: ExtensionContext) {
       (e) => e.document.uri.toString() === params.uri
     );
     if (editor) {
-      const { styleTokens } = params.tokens;
+      const { styleTokens } = params?.tokens || {};
       const classTokensRanges = styleTokens?.map((token: Token) => {
         const { loc } = token || {};
         return new Range(
