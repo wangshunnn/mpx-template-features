@@ -24,3 +24,5 @@ export function binarySearch(
   }
   return null;
 }
+
+export const noop = () => {};

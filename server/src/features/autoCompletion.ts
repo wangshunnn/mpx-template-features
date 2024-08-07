@@ -6,7 +6,7 @@ import {
   TextDocuments,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { COMPLETION_DATA_TYPE } from "../common/const";
+import { COMPLETION_KIND } from "../common/const";
 import { mpxLocationMappingService } from "../common/mapping";
 
 export async function useCompletion(
@@ -30,26 +30,47 @@ function completionProvider(documents: TextDocuments<TextDocument>) {
 
     const completionList: CompletionItem[] = [];
 
-    for (const [label] of scriptMapping.dataMapping) {
-      completionList.push({
-        label,
-        kind: CompletionItemKind.Variable,
-        data: COMPLETION_DATA_TYPE.DATA_VARIABLE,
-      });
-    }
-    for (const [label] of scriptMapping.computedMapping) {
-      completionList.push({
-        label,
-        kind: CompletionItemKind.Variable,
-        data: COMPLETION_DATA_TYPE.COMPUTED_VARIABLE,
-      });
-    }
-    for (const [label] of scriptMapping.methodsMapping) {
-      completionList.push({
-        label,
-        kind: CompletionItemKind.Function,
-        data: COMPLETION_DATA_TYPE.METHOD_FUNCTION,
-      });
+    const { scriptDataMapping, setupDataMapping } = scriptMapping || {};
+
+    if (scriptDataMapping) {
+      const { data, computed, methods } = scriptDataMapping;
+      for (const [label] of data) {
+        completionList.push({
+          label,
+          kind: CompletionItemKind.Variable,
+          data: COMPLETION_KIND.LEGACY_DATA_VARIABLE,
+        });
+      }
+      for (const [label] of computed) {
+        completionList.push({
+          label,
+          kind: CompletionItemKind.Variable,
+          data: COMPLETION_KIND.LEGACY_COMPUTED_VARIABLE,
+        });
+      }
+      for (const [label] of methods) {
+        completionList.push({
+          label,
+          kind: CompletionItemKind.Function,
+          data: COMPLETION_KIND.LEGACY_METHOD_FUNCTION,
+        });
+      }
+    } else if (setupDataMapping) {
+      const { defineProps, defineExpose } = setupDataMapping;
+      for (const [label] of defineProps) {
+        completionList.push({
+          label,
+          kind: CompletionItemKind.Variable,
+          data: COMPLETION_KIND.SETUP_DEFINE_PROPS,
+        });
+      }
+      for (const [label] of defineExpose) {
+        completionList.push({
+          label,
+          kind: CompletionItemKind.Variable,
+          data: COMPLETION_KIND.SETUP_DEFINE_EXPOSE,
+        });
+      }
     }
 
     return completionList;
@@ -58,22 +79,32 @@ function completionProvider(documents: TextDocuments<TextDocument>) {
 
 function completionResolveProvider(item: CompletionItem): CompletionItem {
   switch (item.data) {
-    // case COMPLETION_DATA_TYPE.DATA_VARIABLE:
-    //   item.detail = "data";
-    //   item.documentation = "mpx props data";
-    //   break;
+    case COMPLETION_KIND.LEGACY_DATA_VARIABLE:
+      item.detail = "data";
+      item.documentation = "mpx props data";
+      break;
 
-    // case COMPLETION_DATA_TYPE.COMPUTED_VARIABLE:
-    //   item.detail = "computed";
-    //   item.documentation = "mpx computed data";
-    //   break;
+    case COMPLETION_KIND.LEGACY_COMPUTED_VARIABLE:
+      item.detail = "computed";
+      item.documentation = "mpx computed data";
+      break;
 
-    // case COMPLETION_DATA_TYPE.METHOD_FUNCTION:
-    //   item.detail = "method function";
-    //   item.documentation = "mpx method function";
-    //   break;
+    case COMPLETION_KIND.LEGACY_METHOD_FUNCTION:
+      item.detail = "method function";
+      item.documentation = "mpx method function";
+      break;
 
-    case COMPLETION_DATA_TYPE.STYLE_CLASS:
+    case COMPLETION_KIND.SETUP_DEFINE_PROPS:
+      item.detail = "defineProps";
+      item.documentation = "mpx setup defineProps";
+      break;
+
+    case COMPLETION_KIND.SETUP_DEFINE_EXPOSE:
+      item.detail = "defineExpose";
+      item.documentation = "mpx setup defineExpose";
+      break;
+
+    case COMPLETION_KIND.STYLE_CLASS:
       item.detail = "style class";
       item.documentation = "mpx style class";
       break;

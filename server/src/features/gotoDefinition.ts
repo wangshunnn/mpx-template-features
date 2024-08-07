@@ -129,9 +129,11 @@ export function findDefinition(
   if (findVarDefinition && scriptMapping) {
     const { key } = findVarDefinition;
     const loc: MapLocation | undefined =
-      scriptMapping.dataMapping.get(key) ||
-      scriptMapping.computedMapping.get(key) ||
-      scriptMapping.methodsMapping.get(key);
+      scriptMapping.scriptDataMapping?.data.get(key) ||
+      scriptMapping.scriptDataMapping?.computed.get(key) ||
+      scriptMapping.scriptDataMapping?.methods.get(key) ||
+      scriptMapping.setupDataMapping?.defineProps.get(key) ||
+      scriptMapping.setupDataMapping?.defineExpose.get(key);
     if (loc) {
       return {
         uri,

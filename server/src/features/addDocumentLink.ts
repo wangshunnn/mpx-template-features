@@ -23,11 +23,11 @@ function documentLinkProvider(
     const document = documents.get(textDocument.uri);
     const uri = document?.uri;
     if (!document || !uri) return null;
-    const { templateMapping, stylusMapping, scriptMapping, scriptJsonMapping } =
+    const { templateMapping, scriptMapping, scriptJsonMapping } =
       mpxLocationMappingService.get(uri) || {};
     if (!templateMapping) return null;
 
-    const { tagMapping, classMapping, variableMapping } = templateMapping;
+    const { tagMapping, variableMapping } = templateMapping;
 
     const tagLinkList: DocumentLink[] = [];
     if (scriptJsonMapping) {
@@ -69,22 +69,47 @@ function documentLinkProvider(
 
     const variableLinkList: DocumentLink[] = [];
     if (scriptMapping) {
+      const { scriptDataMapping, setupDataMapping } = scriptMapping || {};
+      // const {data} = scriptDataMapping
       [...variableMapping.entries()].forEach(([_key, v]) => {
         const key = _key.substring(0, _key.lastIndexOf("-"));
-        if (
-          scriptMapping.dataMapping?.has?.(key) ||
-          scriptMapping.computedMapping?.has?.(key) ||
-          scriptMapping.methodsMapping?.has?.(key)
-        ) {
-          const { loc } = v;
-          const link: DocumentLink = {
-            range: {
-              start: document.positionAt(loc.start),
-              end: document.positionAt(loc.end),
-            },
-            tooltip: "转到 script 中的定义",
-          };
-          variableLinkList.push(link);
+        const { loc } = v;
+        const range = {
+          start: document.positionAt(loc.start),
+          end: document.positionAt(loc.end),
+        };
+
+        if (scriptDataMapping) {
+          const { data, computed, methods } = scriptDataMapping;
+          if (data.has?.(key)) {
+            variableLinkList.push({
+              tooltip: "转到 data 定义",
+              range,
+            });
+          } else if (computed.has?.(key)) {
+            variableLinkList.push({
+              tooltip: "转到 computed 定义",
+              range,
+            });
+          } else if (methods.has?.(key)) {
+            variableLinkList.push({
+              tooltip: "转到 methods 定义",
+              range,
+            });
+          }
+        } else if (setupDataMapping) {
+          const { defineProps, defineExpose } = setupDataMapping;
+          if (defineProps.has?.(key)) {
+            variableLinkList.push({
+              tooltip: "转到 defineProps 定义",
+              range,
+            });
+          } else if (defineExpose.has?.(key)) {
+            variableLinkList.push({
+              tooltip: "转到 defineExpose 定义",
+              range,
+            });
+          }
         }
       });
     }
@@ -98,7 +123,6 @@ function documentLinkResolveProvider(
 ): (param: DocumentLink) => DocumentLink | null {
   return (_item: DocumentLink) => {
     // if (!myDocument) return null;
-    // console.log("---> documentLinkResolveProvider", item);
     // return {
     //   range: {
     //     start: myDocument.positionAt(100),

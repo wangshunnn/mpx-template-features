@@ -19,7 +19,11 @@ import * as fs from "fs";
 import * as path from "path";
 import * as stylus from "stylus";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { uriToFileName } from "./utils";
+import { noop, uriToFileName } from "./utils";
+import {
+  SCRIPT_CREATE_COMPONENT_PROPS,
+  SETUP_GLOBAL_FUNCTION_NAME,
+} from "./const";
 
 export type MapLocation = { start: number; end: number };
 export type MatrixLocation = { line: number; column: number };
@@ -30,7 +34,14 @@ export type JsonMappingValue = {
   relativePath?: string;
 };
 export type TemplateMappingItem = Map<string, MappingValue>;
-export type ScriptMappingItem = Map<string, MapLocation>;
+export type ScriptLegacyMappingItem = Record<
+  SCRIPT_CREATE_COMPONENT_PROPS,
+  Map<string, MapLocation>
+>;
+export type ScriptSetupMappingItem = Record<
+  SETUP_GLOBAL_FUNCTION_NAME,
+  Map<string, MapLocation>
+>;
 export type TemplateMapping = {
   tagMapping: TemplateMappingItem;
   classMapping: TemplateMappingItem;
@@ -41,9 +52,8 @@ export type TemplateMapping = {
   loc: MapLocation;
 } | null;
 export type ScriptMapping = {
-  dataMapping: ScriptMappingItem;
-  computedMapping: ScriptMappingItem;
-  methodsMapping: ScriptMappingItem;
+  scriptDataMapping?: ScriptLegacyMappingItem;
+  setupDataMapping?: ScriptSetupMappingItem;
 } | null;
 export type StylusMapping = Map<string, MatrixLocation[]>;
 export type StylusPropsMapping = Map<
@@ -95,7 +105,7 @@ export function parseSFC(uri: string, document?: TextDocument): SFCMapping {
     };
     return sfcMapping;
   } catch (err) {
-    console.warn("----> warning: parse SFC failed");
+    console.warn("[debug warning] parse SFC failed");
     return {
       templateMapping: null,
       scriptMapping: null,
@@ -216,7 +226,7 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string) {
   try {
     traverseTemplate(compileTemplateResult.ast!);
   } catch (err) {
-    console.error("---> traverseTemplate error: ", err);
+    console.warn("[debug warning] traverseTemplate error: ", err);
   }
 
   const tagLocationSort = [...tagMapping.entries()].map(([, v]) => v);
@@ -421,13 +431,19 @@ export function parseScriptLegacy(descriptor: SFCDescriptor, uri: string) {
   const componentExpression = (component as ExpressionStatement)
     .expression as CallExpression;
   const scriptOffset = compileScriptResult.loc.start.offset;
-  const dataMapping = new Map<string, MapLocation>();
+
+  const scriptDataMapping: ScriptLegacyMappingItem = {
+    [SCRIPT_CREATE_COMPONENT_PROPS.DATA]: new Map<string, MapLocation>(),
+    [SCRIPT_CREATE_COMPONENT_PROPS.COMPUTED]: new Map<string, MapLocation>(),
+    [SCRIPT_CREATE_COMPONENT_PROPS.METHODS]: new Map<string, MapLocation>(),
+  };
 
   // traverse(compileScriptResult.scriptAst, )
   for (const prop of (componentExpression.arguments[0] as ObjectExpression)
     .properties) {
     if (prop.type === "ObjectProperty" && prop.key.type === "Identifier") {
-      switch (prop.key.name) {
+      const propsName = prop.key.name;
+      switch (propsName) {
         case "properties":
         case "data": {
           if (prop.value.type === "ObjectExpression") {
@@ -440,16 +456,22 @@ export function parseScriptLegacy(descriptor: SFCDescriptor, uri: string) {
                     start: item.key.start! + scriptOffset,
                     end: item.key.end! + scriptOffset,
                   };
-                  dataMapping.set(dataKey, dataLoc);
+                  scriptDataMapping[SCRIPT_CREATE_COMPONENT_PROPS.DATA].set(
+                    dataKey,
+                    dataLoc
+                  );
                 } else if (item.key.type === "StringLiteral") {
                   const dataKey = item.key.value;
                   const dataLoc = {
                     start: item.key.start! + scriptOffset + 1,
                     end: item.key.end! + scriptOffset - 1,
                   };
-                  dataMapping.set(dataKey, dataLoc);
+                  scriptDataMapping[SCRIPT_CREATE_COMPONENT_PROPS.DATA].set(
+                    dataKey,
+                    dataLoc
+                  );
                 } else {
-                  console.warn("----> warning: ", item.key.type);
+                  console.warn("[debug warning]", item.key.type);
                 }
               }
             });
@@ -482,7 +504,7 @@ export function parseScriptLegacy(descriptor: SFCDescriptor, uri: string) {
                           start: element.start! + scriptOffset + 1,
                           end: element.end! + scriptOffset - 1,
                         };
-                        dataMapping.set(dataKey, dataLoc);
+                        scriptDataMapping[propsName].set(dataKey, dataLoc);
                       }
                     });
                   }
@@ -494,10 +516,10 @@ export function parseScriptLegacy(descriptor: SFCDescriptor, uri: string) {
                     start: item.key.start! + scriptOffset,
                     end: item.key.end! + scriptOffset,
                   };
-                  dataMapping.set(dataKey, dataLoc);
+                  scriptDataMapping[propsName].set(dataKey, dataLoc);
                 }
               } else {
-                console.warn("----> warning: ", item.type);
+                console.warn("[debug warning]", item.type);
               }
             });
           }
@@ -508,51 +530,169 @@ export function parseScriptLegacy(descriptor: SFCDescriptor, uri: string) {
       }
     }
   }
-  const computedMapping = new Map<string, MapLocation>();
-  const methodsMapping = new Map<string, MapLocation>();
-  return { dataMapping, computedMapping, methodsMapping };
+
+  return { scriptDataMapping };
 }
 
 export function parseScriptSetup(descriptor: SFCDescriptor, uri: string) {
-  const dataMapping = new Map<string, MapLocation>();
-  const computedMapping = new Map<string, MapLocation>();
-  const methodsMapping = new Map<string, MapLocation>();
+  const setupDataMapping: ScriptSetupMappingItem = {
+    [SETUP_GLOBAL_FUNCTION_NAME.DEFINE_PROPS]: new Map<string, MapLocation>(),
+    [SETUP_GLOBAL_FUNCTION_NAME.DEFINE_EXPOSE]: new Map<string, MapLocation>(),
+  };
 
   const compileSetupResult = descriptor.scriptSetup;
   const setupLocOffset = compileSetupResult?.loc.start.offset;
 
-  // defineExpose
-  const [defineExpose, offset] = extractDefineExpose(
-    compileSetupResult?.content
-  );
-  const res: [string, number][] = parseJSExpression(
-    /** 去除最后一个逗号，避免报错 */
-    defineExpose.replace(/,(\s*})/, "$1")
-  )?.map((i /** `defineExpose(` 13个字符 */) => [i[0], i[1] + offset + 13]);
-  // console.log("[shun] --->", setupLocOffset, res);
-  res.forEach((res) => {
-    const [key = "", offset = 0] = res;
-    if (key && setupLocOffset) {
-      const dataLoc = {
-        start: offset + setupLocOffset,
-        end: offset + setupLocOffset + key.length,
-      };
-      dataMapping.set(key, dataLoc);
+  function parseSetupGlobalFunction(funcName: SETUP_GLOBAL_FUNCTION_NAME) {
+    if (!funcName) {
+      return;
     }
-  });
 
-  return { dataMapping, computedMapping, methodsMapping };
+    const [extractedCode = "", offset = 0] =
+      extractSetupGlobalFunctionExpression(funcName)(
+        compileSetupResult?.content
+      ) || [];
+
+    const res: [string, number][] =
+      parseSetupGlobalFunctionExpression(funcName)(extractedCode)?.map((i) => [
+        i[0],
+        i[1] + offset,
+      ]) || [];
+
+    res?.forEach((res) => {
+      const [key = "", offset = 0] = res;
+      if (key && setupLocOffset) {
+        const dataLoc = {
+          start: offset + setupLocOffset,
+          end: offset + setupLocOffset + key.length,
+        };
+        setupDataMapping[funcName].set(key, dataLoc);
+      }
+    });
+  }
+
+  /** defineProps() ⬇ */
+  parseSetupGlobalFunction(SETUP_GLOBAL_FUNCTION_NAME.DEFINE_PROPS);
+  /** defineExpose() ⬇ */
+  parseSetupGlobalFunction(SETUP_GLOBAL_FUNCTION_NAME.DEFINE_EXPOSE);
+  // console.log("[shun] --->", setupDataMapping);
+
+  return { setupDataMapping };
 }
 
-function extractDefineExpose(code: string = ""): [string, number] {
-  const regex = /defineExpose\(\s*({[^}]*})\s*\)/;
-  const match = code.match(regex);
-
-  if (match) {
-    return [match[1], match.index || 0];
-  } else {
-    return ["", 0];
+function extractSetupGlobalFunctionExpression(
+  funcName: SETUP_GLOBAL_FUNCTION_NAME
+) {
+  if (!funcName) {
+    return noop;
   }
+
+  return (code: string = ""): [string, number] => {
+    let _funcName: `${SETUP_GLOBAL_FUNCTION_NAME}${"({" | "<{"}`;
+    let start, end, stack, pairs;
+    let isTS = false;
+
+    if ((start = code.indexOf(`${funcName}({`)) !== -1) {
+      _funcName = `${funcName}({`;
+      stack = ["(", "{"];
+      pairs = new Map([
+        [")", "("],
+        ["}", "{"],
+      ]);
+    } else if ((start = code.indexOf(`${funcName}<{`)) !== -1) {
+      _funcName = `${funcName}<{`;
+      stack = ["<", "{"];
+      pairs = new Map([
+        [">", "<"],
+        ["}", "{"],
+      ]);
+      isTS = true;
+    } else {
+      return ["", 0];
+    }
+
+    for (let i = start + _funcName.length; i < code.length; i++) {
+      const c = code[i];
+      if ([...pairs.values()].includes(c)) {
+        stack.push(c);
+      } else if (pairs.has(c)) {
+        if (stack.pop() !== pairs.get(c)) {
+          break;
+        }
+        if (stack.length === 0) {
+          end = i;
+          break;
+        }
+      }
+    }
+
+    if (start && end && end > start) {
+      const splitCode = code.substring(start, end + 1);
+      return [splitCode, start || 0];
+    } else {
+      return ["", 0];
+    }
+  };
+}
+
+function parseSetupGlobalFunctionExpression(
+  funcName: SETUP_GLOBAL_FUNCTION_NAME
+) {
+  if (!funcName) {
+    return noop;
+  }
+  return (code: string = "") => {
+    try {
+      const ans: [string, number, boolean][] = [];
+      const ast = parse(code, {
+        sourceType: "script",
+        plugins: ["typescript"],
+      });
+      traverse(ast, {
+        Program(path: any) {
+          const topLevelNode = path.node.body[0];
+          if (t.isExpressionStatement(topLevelNode)) {
+            const callExp = topLevelNode.expression;
+            if (t.isTSInstantiationExpression(callExp)) {
+              /** ts, like: defineProps<{}> */
+              const tsNode = callExp.typeParameters?.params[0];
+              if (t.isTSTypeLiteral(tsNode)) {
+                tsNode.members?.forEach((p) => {
+                  if (t.isTSPropertySignature(p) && t.isIdentifier(p.key)) {
+                    const key = p.key;
+                    if (key.start) {
+                      ans.push([key.name, key.start, true]);
+                    }
+                  }
+                });
+              }
+            } else if (t.isCallExpression(callExp)) {
+              /** js, like: defineProps({}) */
+              if (
+                t.isIdentifier(callExp.callee) &&
+                callExp.callee.name === funcName
+              ) {
+                const args = callExp.arguments?.[0];
+                if (t.isObjectExpression(args)) {
+                  args.properties?.forEach((p) => {
+                    if (t.isObjectProperty(p) && t.isIdentifier(p.key)) {
+                      const key = p.key;
+                      if (key.start) {
+                        ans.push([key.name, key.start, true]);
+                      }
+                    }
+                  });
+                }
+              }
+            }
+          }
+        },
+      });
+      return ans;
+    } catch (_) {
+      return [];
+    }
+  };
 }
 
 export function parseStylus(descriptor: SFCDescriptor, uri?: string) {
@@ -653,7 +793,7 @@ export function parseStylus(descriptor: SFCDescriptor, uri?: string) {
       });
     }
   } catch (err) {
-    console.error("---> traverseStylus error: ", err);
+    console.warn("[debug warning] traverseStylus error: ", err);
   }
   return { stylusMapping, stylusPropsMapping };
 }
@@ -676,7 +816,7 @@ export function parseScriptJson(
           item?.loc?.source?.startsWith('<script type="application/json">')
       );
       jsonSource = jsonDescriptor?.loc?.source as string;
-      const str = jsonSource.slice(0, jsonSource.indexOf("\n"));
+      const str = jsonSource?.slice(0, jsonSource.indexOf("\n"));
       if (str.includes("type") && str.includes("application/json")) {
         jsonScriptType = JSON_SCRIPT_TYPE.TYPE_JSON;
       } else if (str.includes("name") && str.includes("json")) {
@@ -715,7 +855,7 @@ export function parseScriptJson(
       // TODO <script name="json">
     }
   } catch (err) {
-    console.error("---> parseScriptJson error: ", err);
+    console.error("[debug warning] parseScriptJson error: ", err);
   }
   return jsonMapping;
 }
