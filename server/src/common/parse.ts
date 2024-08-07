@@ -816,7 +816,7 @@ export function parseScriptJson(
           item?.loc?.source?.startsWith('<script type="application/json">')
       );
       jsonSource = jsonDescriptor?.loc?.source as string;
-      const str = jsonSource?.slice(0, jsonSource.indexOf("\n"));
+      const str = jsonSource?.slice(0, jsonSource.indexOf("\n")) || "";
       if (str.includes("type") && str.includes("application/json")) {
         jsonScriptType = JSON_SCRIPT_TYPE.TYPE_JSON;
       } else if (str.includes("name") && str.includes("json")) {
