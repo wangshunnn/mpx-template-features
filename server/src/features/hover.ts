@@ -27,41 +27,56 @@ function hoverProvider(
     const document = documents.get(textDocument.uri);
     const uri = document?.uri.toString();
     if (!document || !uri) return null;
+
     const { scriptMapping } = mpxLocationMappingService.get(uri) || {};
     if (!scriptMapping) return null;
+
     const { targetRange, keyLoc } =
       findDefinition(uri, document.offsetAt(position)) || {};
-    if (!targetRange) return null;
+    if (!targetRange || !keyLoc) return null;
 
-    const range = {
-      start: {
-        line: targetRange.start.line - 1,
-        character: targetRange.start.column - 1,
-      },
-      end: {
-        line: targetRange.end.line - 1,
-        character: targetRange.end.column,
-      },
-    };
-    const text = document.getText(range);
-    if (!text || !targetRange || !keyLoc) return null;
+    const contentsArray = [];
+    for (const r of targetRange) {
+      const range = {
+        start: {
+          line: r.start.line - 1,
+          character: r.start.column - 1,
+        },
+        end: {
+          line: r.end.line - 1,
+          character: r.end.column,
+        },
+      };
+      const text = document.getText(range);
+      if (!text || !targetRange) continue;
+      contentsArray.push(text);
+    }
+
+    if (!contentsArray.length) {
+      return null;
+    }
 
     // format
-    const contents = text
-      ?.split("\n")
-      .map((i) => i.trim())
-      .filter(Boolean)
-      .join("\n  ");
+    const markup = contentsArray
+      .map((c) => {
+        const _c = c
+          ?.split("\n")
+          .map((i) => i.trim())
+          .filter(Boolean)
+          .join("\n  ");
+        return ["```stylus", _c, "```"].join("\n");
+      })
+      .join("\n --- \n");
+    const tips =
+      contentsArray.length > 1
+        ? ` 发现 **${contentsArray.length}** 个同名样式 `
+        : " ";
+    const title = `**stylus class**${tips}(cmd + 单击)\n`;
     const markdown: MarkupContent = {
       kind: MarkupKind.Markdown,
-      value: [
-        "```stylus",
-        "stylus className",
-        "/* cmd+单击 跳转查看 */",
-        contents,
-        "```",
-      ].join("\n"),
+      value: title + markup,
     };
+
     return {
       contents: markdown,
       range: Range.create(
@@ -76,7 +91,7 @@ export function findDefinition(
   uri: string,
   position: number
 ): {
-  targetRange: { start: MatrixLocation; end: MatrixLocation };
+  targetRange: Array<{ start: MatrixLocation; end: MatrixLocation }>;
   keyLoc: MapLocation;
 } | null {
   const sfcMapping = mpxLocationMappingService.get(uri);
@@ -94,9 +109,9 @@ export function findDefinition(
   );
   if (findClassDefinition && stylusPropsMapping) {
     const { key, loc } = findClassDefinition;
-    const range = stylusPropsMapping.get(key);
-    if (range) {
-      return { keyLoc: loc, targetRange: range };
+    const rangeArray = stylusPropsMapping.get(key);
+    if (rangeArray) {
+      return { keyLoc: loc, targetRange: rangeArray };
     }
   }
   return null;

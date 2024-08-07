@@ -59,7 +59,7 @@ export type ScriptMapping = {
 export type StylusMapping = Map<string, MatrixLocation[]>;
 export type StylusPropsMapping = Map<
   string,
-  { start: MatrixLocation; end: MatrixLocation }
+  Array<{ start: MatrixLocation; end: MatrixLocation }>
 >;
 export type ScriptJsonMapping = Map<string, JsonMappingValue>;
 export type Template2ScriptMapping = Map<string, MapLocation>;
@@ -740,7 +740,7 @@ export function parseStylus(descriptor: SFCDescriptor, uri?: string) {
             last?.forEach((item: any) => {
               const key = item.string || item.val;
               if (key) {
-                stylusPropsMapping.set(key, {
+                const stylusRange = {
                   start: {
                     line: item.lineno + stylusMatrixLoc.line - 1,
                     column: item.column - 1,
@@ -749,7 +749,12 @@ export function parseStylus(descriptor: SFCDescriptor, uri?: string) {
                     line: endLine + stylusMatrixLoc.line - 1,
                     column: 0,
                   },
-                });
+                };
+                if (stylusPropsMapping.has(key)) {
+                  stylusPropsMapping.get(key)?.push(stylusRange);
+                } else {
+                  stylusPropsMapping.set(key, [stylusRange]);
+                }
               }
             });
             last = null;
@@ -770,7 +775,7 @@ export function parseStylus(descriptor: SFCDescriptor, uri?: string) {
       last?.forEach((item: any) => {
         const key = item.string || item.val;
         if (key) {
-          stylusPropsMapping.set(key, {
+          const stylusRange = {
             start: {
               line: item.lineno + stylusMatrixLoc.line - 1,
               column: item.column - 1,
@@ -779,7 +784,12 @@ export function parseStylus(descriptor: SFCDescriptor, uri?: string) {
               line: compileStylusResult.lineno + stylusMatrixLoc.line - 1,
               column: compileStylusResult.column,
             },
-          });
+          };
+          if (stylusPropsMapping.has(key)) {
+            stylusPropsMapping.get(key)?.push(stylusRange);
+          } else {
+            stylusPropsMapping.set(key, [stylusRange]);
+          }
         }
       });
     }
