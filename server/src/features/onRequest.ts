@@ -23,9 +23,10 @@ export function sendRequestTokens(
   uri: string
 ) {
   const { templateMapping, stylusMapping } = mpxLocationMappingService.get(uri);
-  const styleTokens = templateMapping?.classLocationSort.filter(({ key }) =>
-    stylusMapping?.has(key)
-  );
+  const styleTokens =
+    templateMapping?.classLocationSort.filter(({ key }) =>
+      stylusMapping?.has(key)
+    ) || [];
   connection.sendRequest("mpx/tokens", {
     uri,
     tokens: { styleTokens },

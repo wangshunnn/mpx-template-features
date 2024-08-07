@@ -5,11 +5,12 @@ import {
   Hover,
   MarkupKind,
   MarkupContent,
+  Range,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { mpxLocationMappingService } from "../common/mapping";
 import { binarySearch } from "../common/utils";
-import { MatrixLocation } from "../common/parse";
+import { MapLocation, MatrixLocation } from "../common/parse";
 
 export async function useHover(
   connection: ReturnType<typeof createConnection>,
@@ -28,7 +29,8 @@ function hoverProvider(
     if (!document || !uri) return null;
     const { scriptMapping } = mpxLocationMappingService.get(uri) || {};
     if (!scriptMapping) return null;
-    const targetRange = findDefinition(uri, document.offsetAt(position));
+    const { targetRange, keyLoc } =
+      findDefinition(uri, document.offsetAt(position)) || {};
     if (!targetRange) return null;
 
     const range = {
@@ -42,7 +44,7 @@ function hoverProvider(
       },
     };
     const text = document.getText(range);
-    if (!text) return null;
+    if (!text || !targetRange || !keyLoc) return null;
 
     // format
     const contents = text
@@ -52,12 +54,20 @@ function hoverProvider(
       .join("\n  ");
     const markdown: MarkupContent = {
       kind: MarkupKind.Markdown,
-      value: ["```stylus", "/* cmd+单击 跳转查看 */", contents, "```"].join(
-        "\n"
-      ),
+      value: [
+        "```stylus",
+        "stylus className",
+        "/* cmd+单击 跳转查看 */",
+        contents,
+        "```",
+      ].join("\n"),
     };
     return {
       contents: markdown,
+      range: Range.create(
+        document.positionAt(keyLoc.start),
+        document.positionAt(keyLoc.end)
+      ),
     };
   };
 }
@@ -65,7 +75,10 @@ function hoverProvider(
 export function findDefinition(
   uri: string,
   position: number
-): { start: MatrixLocation; end: MatrixLocation } | null {
+): {
+  targetRange: { start: MatrixLocation; end: MatrixLocation };
+  keyLoc: MapLocation;
+} | null {
   const sfcMapping = mpxLocationMappingService.get(uri);
   const { templateMapping, stylusPropsMapping } = sfcMapping || {};
   if (
@@ -80,10 +93,10 @@ export function findDefinition(
     position
   );
   if (findClassDefinition && stylusPropsMapping) {
-    const { key } = findClassDefinition;
+    const { key, loc } = findClassDefinition;
     const range = stylusPropsMapping.get(key);
     if (range) {
-      return range;
+      return { keyLoc: loc, targetRange: range };
     }
   }
   return null;

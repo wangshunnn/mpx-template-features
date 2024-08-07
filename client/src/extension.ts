@@ -57,7 +57,7 @@ export function activate(context: ExtensionContext) {
   splitEditors.register(context, client);
 
   const UnderlineDecoration = window.createTextEditorDecorationType({
-    textDecoration: "none; border-bottom: 1px dashed currentColor",
+    textDecoration: "none; border-bottom: 1px dotted currentColor",
     rangeBehavior: DecorationRangeBehavior.ClosedClosed,
   });
   // const borderRadius = "50%";
@@ -88,14 +88,16 @@ export function activate(context: ExtensionContext) {
     );
     if (editor) {
       const { styleTokens } = params.tokens;
-      const classTokensRanges = styleTokens.map((token: Token) => {
+      const classTokensRanges = styleTokens?.map((token: Token) => {
         const { loc } = token || {};
         return new Range(
           editor.document.positionAt(loc?.start),
           editor.document.positionAt(loc?.end)
         );
       });
-      editor.setDecorations(UnderlineDecoration, classTokensRanges);
+      if (classTokensRanges) {
+        editor.setDecorations(UnderlineDecoration, classTokensRanges);
+      }
     }
   });
 
