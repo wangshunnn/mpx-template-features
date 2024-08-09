@@ -62,7 +62,7 @@ connection.onInitialize((params: InitializeParams) => {
         triggerCharacters: ["{", "(", '"', "'"],
       },
       // hover
-      hoverProvider: true,
+      // hoverProvider: true,
       // experimental
       experimental: "",
     },
@@ -164,7 +164,7 @@ useOnRequest(connection);
 useDefinition(connection, documents);
 useDocumentLinks(connection, documents);
 useCompletion(connection, documents);
-useHover(connection, documents);
+// useHover(connection, documents);
 
 connection.onDidChangeWatchedFiles((_change) => {
   connection.console.info("We received an file change event");

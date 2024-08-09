@@ -13,6 +13,7 @@
 		"vscode": "^1.75.0"
 	},
 	"dependencies": {
+		"transform-to-unocss-core": "^0.0.30",
 		"vscode-languageclient": "^8.1.0"
 	},
 	"devDependencies": {

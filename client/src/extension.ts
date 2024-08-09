@@ -1,26 +1,16 @@
 import * as path from "path";
-import {
-  DecorationRangeBehavior,
-  window,
-  workspace,
-  ExtensionContext,
-  Range,
-} from "vscode";
+import { workspace, ExtensionContext } from "vscode";
 import * as splitEditors from "./features/splitEditors";
+import * as onRequest from "./features/onRequest";
+import * as hover from "./features/hover";
+import * as transformStylus2Unocss from "./features/transformStylus2Unocss";
+
 import {
   LanguageClient,
   LanguageClientOptions,
   ServerOptions,
   TransportKind,
 } from "vscode-languageclient/node";
-
-export interface Token {
-  key: string;
-  loc: {
-    start: number;
-    end: number;
-  };
-}
 
 let client: LanguageClient;
 
@@ -53,61 +43,14 @@ export function activate(context: ExtensionContext) {
 
   client.start();
 
-  /** SFC 文件切分视图 */
+  /** SFC split */
   splitEditors.register(context, client);
-
-  const UnderlineDecoration = window.createTextEditorDecorationType({
-    textDecoration: "none; border-bottom: 1px dotted currentColor",
-    rangeBehavior: DecorationRangeBehavior.ClosedClosed,
-  });
-  // const borderRadius = "50%";
-  // const colorDecoration = window.createTextEditorDecorationType({
-  //   before: {
-  //     width: "0.9em",
-  //     height: "0.9em",
-  //     contentText: " ",
-  //     border: "1px solid",
-  //     margin: `auto 0.2em auto 0;vertical-align: middle;border-radius: ${borderRadius};`,
-  //   },
-  //   dark: {
-  //     before: {
-  //       borderColor: "#eeeeee50",
-  //     },
-  //   },
-  //   light: {
-  //     before: {
-  //       borderColor: "#00000050",
-  //     },
-  //   },
-  // });
-
-  // receive from server
-  client.onRequest("mpx/tokens", (params) => {
-    const editor = window.visibleTextEditors.find(
-      (e) => e.document.uri.toString() === params.uri
-    );
-    if (editor) {
-      const { styleTokens } = params?.tokens || {};
-      const classTokensRanges = styleTokens?.map((token: Token) => {
-        const { loc } = token || {};
-        return new Range(
-          editor.document.positionAt(loc?.start),
-          editor.document.positionAt(loc?.end)
-        );
-      });
-      if (classTokensRanges) {
-        editor.setDecorations(UnderlineDecoration, classTokensRanges);
-      }
-    }
-  });
-
-  // switch Tab file
-  window.onDidChangeActiveTextEditor((editor) => {
-    if (editor) {
-      const uri = editor.document.uri.toString();
-      client.sendRequest("mpx/switchTabFile", uri);
-    }
-  });
+  /** onRequest */
+  onRequest.register(context, client);
+  /** hover: client hover 可以实现 command 富文本, server 不行 😮‍💨 */
+  hover.register(context, client);
+  /** command: transformStylus2Unocss */
+  transformStylus2Unocss.register(context, client);
 }
 
 export function deactivate(): Thenable<void> | undefined {

@@ -22,13 +22,19 @@ export function sendRequestTokens(
   connection: ReturnType<typeof createConnection>,
   uri: string
 ) {
-  const { templateMapping, stylusMapping } = mpxLocationMappingService.get(uri);
-  const styleTokens =
+  const { templateMapping, stylusMapping, stylusPropsMapping } =
+    mpxLocationMappingService.get(uri);
+  const stylusTokensSorted =
     templateMapping?.classLocationSort.filter(({ key }) =>
       stylusMapping?.has(key)
     ) || [];
+
+  // ! 注意通信数据不能是 Map, 需要转为数组
   connection.sendRequest("mpx/tokens", {
     uri,
-    tokens: { styleTokens },
+    tokens: {
+      stylusPropsMapping: Array.from(stylusPropsMapping || []),
+      stylusTokensSorted,
+    },
   });
 }
