@@ -6,7 +6,7 @@
     "source.fixAll.eslint": "explicit"
   },
   "files.exclude": {
-    "*.vsix": true,
+    // "*.vsix": true,
     ".vscode-test": true
   }
 }

@@ -50,7 +50,14 @@ function transformStylus2Unocss(
       stylus = stylus.substring(0, idx) + ":" + stylus.substring(idx);
     }
 
-    const [unocss, errArr] = toUnocssClass(stylus);
+    let unocss: string, errArr: string[];
+
+    try {
+      [unocss, errArr] = toUnocssClass(stylus);
+    } catch (error) {
+      console.error("[transformStylus2Unocss]", error);
+    }
+
     if (errArr?.length) {
       console.warn("[Mpx Template Features] 转换 unocss 失败 case: ", errArr);
     }
