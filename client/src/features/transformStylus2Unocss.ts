@@ -6,10 +6,16 @@ import { BaseLanguageClient } from "vscode-languageclient";
 import { toUnocssClass } from "transform-to-unocss-core";
 import { MapLocation } from "../common/types";
 
+interface ITransformOptions {
+  enforce?: "pre" | "post";
+  include?: string | RegExp;
+  exclude?: string | RegExp;
+}
+
 let userRules: [
   string | RegExp,
   (value: string, unocss?: string) => string | boolean,
-  "pre" | "post"
+  ITransformOptions?
 ][] = [];
 
 const clearUserRules = () => {
@@ -120,7 +126,7 @@ function transformStylus2Unocss(
       stylusValue = stylus.substring(idxSpace + 1).trim();
       stylus = `${stylusProperty}:${stylusValue}`;
     } else {
-      console.warn("[Mpx Template Features] 解析 stylus 失败 case: ", stylus);
+      console.warn("[Mpx Template Features] stylus 格式错误: ", stylus);
       continue;
     }
 
@@ -130,20 +136,24 @@ function transformStylus2Unocss(
       let value = stylusValue;
       let canTransform = true;
 
-      for (const [rule, transformFn, lifeCycle = "pre"] of userRules) {
+      for (const [rule, transformFn, options = {}] of userRules) {
         if (
           (typeof rule === "string" && rule === stylusProperty) ||
           (rule instanceof RegExp && rule.test(stylusProperty))
         ) {
-          if (lifeCycle === "post") {
+          canTransform = false;
+
+          const { enforce = "pre" } = options || {};
+
+          if (enforce === "post") {
             [value = "", errArr] = toUnocssClass(stylus);
           }
 
           if (typeof transformFn === "function") {
             const res = transformFn(value);
 
-            if (res === true && lifeCycle === "pre") {
-              [unocss, errArr] = toUnocssClass(value);
+            if (res === true && enforce === "pre") {
+              [unocss, errArr] = toUnocssClass(stylus);
             } else if (typeof res === "string") {
               unocss = res;
             }
@@ -155,13 +165,9 @@ function transformStylus2Unocss(
 
           break;
         }
-
-        if (canTransform) {
-          [value, errArr] = toUnocssClass(value);
-        }
       }
 
-      if (!unocss) {
+      if (canTransform) {
         [unocss, errArr] = toUnocssClass(stylus);
       }
     } catch (error) {

@@ -59,8 +59,8 @@ module.exports = {
   rules: [
     /** 自定义规则, eg: `font-family: PingFangSC-Medium` -> `PF-500` */
     [
-      'font-family',
-      (value) => {
+      'font-family' /** style 的 Property */,
+      (value /** style 的 value */) => {
         const [basename = '', weight = ''] = value.split('-')
         const family = familyMap[basename]
         if (family) {
@@ -76,9 +76,17 @@ module.exports = {
     [
       /background(-color)?/,
       (value /** 先经过插件内部 unocss 转换后的结果, eg: bg-[#fff] */) => {
-        return value.replace(/[\[\]]/g, '')
+        return value.replace(/[[]/g, '').replace(/[\]]/g, '')
       },
-      'post' // post hook：在转换 unocss 处理之后
+      {
+        /**
+         * 执行时机：
+         * - pre（默认）:在转换 unocss 处理之前
+         * - post:在转换 unocss 处理之后
+         */
+        enforce: 'post',
+        // 未来可能支持更多参数，比如 inludes, excludes ..
+      }
     ]
   ]
 }
