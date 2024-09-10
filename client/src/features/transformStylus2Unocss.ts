@@ -1,7 +1,71 @@
+import * as fs from "fs";
+import * as path from "path";
 import * as vscode from "vscode";
+import { debounce } from "ts-debounce";
 import { BaseLanguageClient } from "vscode-languageclient";
 import { toUnocssClass } from "transform-to-unocss-core";
 import { MapLocation } from "../common/types";
+
+let userRules: [
+  string | RegExp,
+  (value: string, unocss?: string) => string | boolean,
+  "pre" | "post"
+][] = [];
+
+const clearUserRules = () => {
+  userRules.length = 0;
+};
+
+/**
+ * @internal
+ */
+async function loadUserRules(configPath: string) {
+  console.log("[shun] --->", configPath);
+  try {
+    if (fs.existsSync(configPath)) {
+      // 动态执行代码来导入模块，避免 require/import 缓存问题
+      const configContent = fs.readFileSync(configPath, "utf-8");
+      const configModule = eval(configContent);
+
+      const { rules = [] } = configModule || {};
+      if (Array.isArray(rules)) {
+        userRules = rules;
+        console.log(
+          "[Mpx Template Features] loadUserRules success: ",
+          userRules
+        );
+      }
+    } else {
+      clearUserRules();
+    }
+  } catch (error) {
+    clearUserRules();
+    console.error(
+      "[transformStylus2Unocss] `css2uno.config.js` 可能存在 js error:",
+      error
+    );
+  }
+}
+
+export function initializeConfig() {
+  const config = vscode.workspace.getConfiguration("MpxTemplateFeatures");
+  const configPath =
+    config.get<string>("css2uno.configPath") ||
+    path.join(
+      vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || "",
+      "css2uno.config.js"
+    );
+  loadUserRules(configPath);
+
+  const watcher = vscode.workspace.createFileSystemWatcher(configPath);
+  watcher.onDidChange(
+    debounce(() => {
+      loadUserRules(configPath);
+    }, 200)
+  );
+  watcher.onDidCreate(() => loadUserRules(configPath));
+  watcher.onDidDelete(() => clearUserRules());
+}
 
 export function register(
   context: vscode.ExtensionContext,
@@ -41,25 +105,77 @@ function transformStylus2Unocss(
       continue;
     }
 
-    stylus = stylus.split("//")?.[0];
-    stylus = stylus.split("/*")?.[0];
+    stylus = stylus.split("//")[0].split("/*")[0];
 
-    const idx = stylus.indexOf(" ");
+    const idxSpace = stylus.indexOf(" ");
+    const idxColon = stylus.indexOf(":");
+    let stylusProperty = "";
+    let stylusValue = "";
 
-    if (idx !== -1 && !stylus.includes(":")) {
-      stylus = stylus.substring(0, idx) + ":" + stylus.substring(idx);
+    if (idxColon !== -1) {
+      stylusProperty = stylus.substring(0, idxColon).trim();
+      stylusValue = stylus.substring(idxColon + 1).trim();
+    } else if (idxSpace !== -1) {
+      stylusProperty = stylus.substring(0, idxSpace).trim();
+      stylusValue = stylus.substring(idxSpace + 1).trim();
+      stylus = `${stylusProperty}:${stylusValue}`;
+    } else {
+      console.warn("[Mpx Template Features] 解析 stylus 失败 case: ", stylus);
+      continue;
     }
 
     let unocss: string, errArr: string[];
 
     try {
-      [unocss, errArr] = toUnocssClass(stylus);
+      let value = stylusValue;
+      let canTransform = true;
+
+      for (const [rule, transformFn, lifeCycle = "pre"] of userRules) {
+        if (
+          (typeof rule === "string" && rule === stylusProperty) ||
+          (rule instanceof RegExp && rule.test(stylusProperty))
+        ) {
+          if (lifeCycle === "post") {
+            [value = "", errArr] = toUnocssClass(stylus);
+          }
+
+          if (typeof transformFn === "function") {
+            const res = transformFn(value);
+
+            if (res === true && lifeCycle === "pre") {
+              [unocss, errArr] = toUnocssClass(value);
+            } else if (typeof res === "string") {
+              unocss = res;
+            }
+          } else {
+            console.warn(
+              "[Mpx Template Features] css2uno.config.js 中配置的 transformFn 必须是函数，否则会报错"
+            );
+          }
+
+          break;
+        }
+
+        if (canTransform) {
+          [value, errArr] = toUnocssClass(value);
+        }
+      }
+
+      if (!unocss) {
+        [unocss, errArr] = toUnocssClass(stylus);
+      }
     } catch (error) {
-      console.error("[transformStylus2Unocss]", error);
+      console.error(
+        "[Mpx Template Features] transformStylus2Unocss error: ",
+        error
+      );
     }
 
     if (errArr?.length) {
-      console.warn("[Mpx Template Features] 转换 unocss 失败 case: ", errArr);
+      console.warn(
+        "[Mpx Template Features] toUnocssClass 转换失败 case: ",
+        errArr
+      );
     }
 
     if (unocss) {
@@ -91,10 +207,6 @@ function transformStylus2Unocss(
     .then((res) => {
       if (res) {
         // update range
-        // 替换成功后原范围就不再适用，需要及时更新成替换后的文本范围
-        // 既可以防止一直点击转换导致重复替换原范围
-        // 也可以让单个hover中多stylus样式支持点击不同样式的替换
-        // ? 还是不行，每次执行命令的位置参数是固定，不知道之前有没有替换过
         _stylusClassLoc.end = _stylusClassLoc.start + unocssStyleString.length;
       }
     });

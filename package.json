@@ -121,6 +121,7 @@
     "typescript": "^5.2.2"
   },
   "dependencies": {
-    "transform-to-unocss-core": "^0.0.30"
+    "transform-to-unocss-core": "^0.0.30",
+    "ts-debounce": "^4.0.0"
   }
 }

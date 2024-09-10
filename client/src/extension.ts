@@ -43,6 +43,9 @@ export function activate(context: ExtensionContext) {
 
   client.start();
 
+  /** 初始化配置 */
+  transformStylus2Unocss.initializeConfig();
+
   /** SFC split */
   splitEditors.register(context, client);
   /** onRequest */

@@ -18,9 +18,10 @@
    - template 中的 `class 类名` 支持跳转到 `<style> 样式脚本对应位置`
    - template 中的 `自定义的组件标签名` 支持跳转到 `自定义组件所在的文件`
 2. 🚀 **Hover**：`class 类名` hover 展示对应的 style 样式片段
-   - **自动转为原子类**：`hover` 中支持将 `stylus class` 对应的样式一键转换为 `Unocss`
-3. 🚀 **自动补全**：注意 class 等属性值默认不支持自动补全，可以通过 `{`、`(`, `'`、`"` 等符号主动唤起自动触发
-4. 🚀 **视图拆分**：支持拆分 SFC 文件为多个编辑视图。比如同时在左侧/上侧编写 `<script>`，右侧/下侧编写 `<template>`
+3. 🚀 **自动转为原子类**：`hover` 中支持将 `stylus class` 对应的样式一键转换为 `Unocss`
+   -  支持自定义转换规则，配置文件：`css2uno.config.js`, 示例见[下文详情](#自定义转换-unocss-规则)
+4. 🚀 **自动补全**：注意 class 等属性值默认不支持自动补全，可以通过 `{`、`(`, `'`、`"` 等符号主动唤起自动触发
+5. 🚀 **视图拆分**：支持拆分 SFC 文件为多个编辑视图。比如同时在左侧/上侧编写 `<script>`，右侧/下侧编写 `<template>`
 
 ## 演示
 
@@ -39,6 +40,50 @@
 - 视图拆分
   
    <img src="./asset/mpx-features-split-editors.png" alt="视图拆分" width="700"/>
+
+## 自定义转换 Unocss 规则
+
+```js
+const familyMap = {
+  PingFangSC: {
+    basename: 'PF',
+    weightMap: {
+      Regular: '400',
+      Medium: '500',
+      Semibold: '600'
+    }
+  }
+}
+
+module.exports = {
+  rules: [
+    /** 自定义规则, eg: `font-family: PingFangSC-Medium` -> `PF-500` */
+    [
+      'font-family',
+      (value) => {
+        const [basename = '', weight = ''] = value.split('-')
+        const family = familyMap[basename]
+        if (family) {
+          const weightValue = family.weightMap[weight]
+          if (weightValue) {
+            return `${family.basename}-${weightValue}` // 最终转换结果
+          }
+        }
+        // return true // 如果返回 true, 继续走后续 unocss 默认转换
+      }
+    ],
+    /** 后处理, eg: `background: #fff` --> `bg-[#fff]` --> `bg-#fff` */
+    [
+      /background(-color)?/,
+      (value /** 先经过插件内部 unocss 转换后的结果, eg: bg-[#fff] */) => {
+        return value.replace(/[\[\]]/g, '')
+      },
+      'post' // post hook：在转换 unocss 处理之后
+    ]
+  ]
+}
+
+```
 
 <!-- ## 发布
 vscode 插件发布流程：
