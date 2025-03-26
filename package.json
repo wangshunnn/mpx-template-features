@@ -1,7 +1,7 @@
 {
   "name": "mpx-template-features",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.2.1",
   "displayName": "Mpx Template Features",
   "description": "Language support for Mpx template",
   "publisher": "wangshun",
@@ -35,7 +35,7 @@
     "publish": "vsce publish",
     "publish:major": "vsce publish major",
     "publish:minor": "vsce publish minor",
-    "publish:patch": "vsce publish patch"  
+    "publish:patch": "vsce publish patch"
   },
   "devDependencies": {
     "@types/glob": "^8.1.0",
