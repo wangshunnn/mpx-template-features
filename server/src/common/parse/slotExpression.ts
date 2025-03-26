@@ -1,5 +1,5 @@
 import { parse } from "@babel/parser";
-import traverse, { TraverseOptions, visitors } from "@babel/traverse";
+import traverse, { TraverseOptions } from "@babel/traverse";
 import * as t from "@babel/types";
 import { LRUCache } from "vscode-languageserver";
 

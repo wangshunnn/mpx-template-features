@@ -1,6 +1,6 @@
-import traverse, { Scope } from "@babel/traverse";
+import traverse from "@babel/traverse";
 import * as t from "@babel/types";
-import { MapLocation } from "../types";
+import type { MapLocation } from "../types";
 
 /**
  * 获取函数体内所有顶级 return 语句
