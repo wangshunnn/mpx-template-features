@@ -245,7 +245,7 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string): TemplateM
                       });
                     }
                   });
-                } else if (prop.name.startsWith("bind") || prop.name.startsWith("bind")) {
+                } else if (prop.name.startsWith("bind") || prop.name.startsWith("catch")) {
                   parseExpression(prop.value?.content).forEach((res) => appendVariableMapping(res, prop.value?.loc));
                 } else if (prop.value?.content.includes("{{")) {
                   const content = prop.value?.content;
