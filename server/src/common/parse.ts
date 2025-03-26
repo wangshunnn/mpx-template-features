@@ -97,7 +97,7 @@ export async function parseSFC(uri: string, document?: TextDocument): Promise<SF
       descriptor,
     };
   } catch (err) {
-    console.warn("[debug warning] parse SFC failed", err);
+    console.warn(`[debug warning] ${uri} parse SFC failed`, err);
     return { ...emptySfcMapping };
   }
 }
@@ -245,7 +245,7 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string): TemplateM
                       });
                     }
                   });
-                } else if (prop.name.startsWith("bind") || prop.name.startsWith("bind")) {
+                } else if (prop.name.startsWith("bind") || prop.name.startsWith("catch")) {
                   parseExpression(prop.value?.content).forEach((res) => appendVariableMapping(res, prop.value?.loc));
                 } else if (prop.value?.content.includes("{{")) {
                   const content = prop.value?.content;
@@ -301,7 +301,7 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string): TemplateM
   try {
     traverseTemplate(compileTemplateResult.ast!);
   } catch (err) {
-    console.warn("[debug warning] traverseTemplate error: ", err);
+    console.warn(`[debug warning] ${uri} tra  verseTemplate error: `, err);
   }
 
   const tagLocationSort = [...tagMapping.entries()].map(([, v]) => v);
@@ -992,28 +992,25 @@ export async function parseScriptJson(descriptor: SFCDescriptor, errors: Compile
     }
 
     await Promise.allSettled(
-      Object.entries(usingComponents).map(([key, val]) => {
-        const values = Array.isArray(val) ? val : [val];
-        return Promise.allSettled(
-          values.map(async (componentPath) => {
-            try {
-              const { absolutePath = "", relativePath = "" } = await formatUsingComponentsPath(componentPath, uri);
-              if (absolutePath || relativePath) {
-                jsonMapping.set(key, {
-                  configPath: componentPath,
-                  absolutePath,
-                  relativePath,
-                });
-              }
-            } catch (error) {
-              console.log(`[debug warning] failed resolve "${componentPath}" in "${uri}": `, error);
+      Object.entries(usingComponents).flatMap(([key, val]) =>
+        (Array.isArray(val) ? val : [val]).map(async (componentPath) => {
+          try {
+            const { absolutePath = "", relativePath = "" } = await formatUsingComponentsPath(componentPath, uri);
+            if (absolutePath || relativePath) {
+              jsonMapping.set(key, {
+                configPath: componentPath,
+                absolutePath,
+                relativePath,
+              });
             }
-          }),
-        );
-      }),
+          } catch (error) {
+            console.log(`[debug warning] ${uri} resolve "${componentPath}" failed`, error);
+          }
+        }),
+      ),
     );
   } catch (err) {
-    console.error("[debug warning] parseScriptJson error: ", err);
+    console.error(`[debug warning] ${uri} parseScriptJson error: `, err);
   }
 
   return jsonMapping;
