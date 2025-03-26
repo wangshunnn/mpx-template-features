@@ -1,23 +1,16 @@
 import * as path from "path";
-import { workspace, ExtensionContext } from "vscode";
+import { workspace, ExtensionContext, Uri } from "vscode";
 import * as splitEditors from "./features/splitEditors";
 import * as onRequest from "./features/onRequest";
 import * as hover from "./features/hover";
 import * as transformStylus2Unocss from "./features/transformStylus2Unocss";
 
-import {
-  LanguageClient,
-  LanguageClientOptions,
-  ServerOptions,
-  TransportKind,
-} from "vscode-languageclient/node";
+import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from "vscode-languageclient/node";
 
 let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
-  const serverModule = context.asAbsolutePath(
-    path.join("server", "out", "server.js")
-  );
+  const serverModule = Uri.joinPath(context.extensionUri, "server.js").fsPath;
 
   const serverOptions: ServerOptions = {
     run: { module: serverModule, transport: TransportKind.ipc },
@@ -34,12 +27,7 @@ export function activate(context: ExtensionContext) {
     },
   };
 
-  client = new LanguageClient(
-    "MpxTemplateFeatures",
-    "Mpx Template Features",
-    serverOptions,
-    clientOptions
-  );
+  client = new LanguageClient("MpxTemplateFeatures", "Mpx Template Features", serverOptions, clientOptions);
 
   client.start();
 

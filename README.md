@@ -99,7 +99,7 @@ module.exports = {
 
 <!-- ## 发布
 vscode 插件发布流程：
-# npm i vsce -g
+# npm install -g @vscode/vsce@3.3.0
 1. vsce login wangshun（登录过就不用再登录了，登录过期后需要重新申请vscode token，参考: https://dev.azure.com/wangshunnn/_usersSettings/tokens, https://code.visualstudio.com/api/working-with-extensions/publishing-extension#get-a-personal-access-token）
 2. npm run pack（打包 vsce package）
 3. npm run publish:patch（自动更新小版本并且发布 vsce publish patch）

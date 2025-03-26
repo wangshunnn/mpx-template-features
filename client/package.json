@@ -6,7 +6,7 @@
   "version": "0.0.1",
   "publisher": "wangshun",
   "engines": {
-    "vscode": "^1.75.0"
+    "vscode": "^1.88.0"
   },
   "dependencies": {
     "transform-to-unocss-core": "^0.0.30",

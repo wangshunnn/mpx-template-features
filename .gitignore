@@ -5,3 +5,4 @@ client/server
 .DS_store
 *.vsix
 tsconfig.tsbuildinfo
+dist
