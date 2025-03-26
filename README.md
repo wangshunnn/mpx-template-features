@@ -93,6 +93,10 @@ module.exports = {
 
 ```
 
+## Also shout out to
+
+- [@shulandmimi](https://github.com/shulandmimi)
+
 <!-- ## 发布
 vscode 插件发布流程：
 # npm i vsce -g

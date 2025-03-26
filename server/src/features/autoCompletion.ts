@@ -19,13 +19,13 @@ export async function useCompletion(
 }
 
 function completionProvider(documents: TextDocuments<TextDocument>) {
-  return (
+  return async (
     _textDocumentPosition: TextDocumentPositionParams
-  ): CompletionItem[] => {
+  ): Promise<CompletionItem[]> => {
     const document = documents.get(_textDocumentPosition.textDocument.uri);
     const uri = document?.uri;
     if (!document || !uri) return [];
-    const { scriptMapping } = mpxLocationMappingService.get(uri) || {};
+    const { scriptMapping } = await mpxLocationMappingService.get(uri) || {};
     if (!scriptMapping) return [];
 
     const completionList: CompletionItem[] = [];

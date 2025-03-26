@@ -10,7 +10,8 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { mpxLocationMappingService } from "../common/mapping";
 import { binarySearch } from "../common/utils";
-import { MapLocation, MatrixLocation } from "../common/parse";
+import { MatrixLocation } from "../common/parse";
+import type { MapLocation } from '../common/types';
 
 export async function useHover(
   connection: ReturnType<typeof createConnection>,
@@ -22,17 +23,17 @@ export async function useHover(
 
 function hoverProvider(
   documents: TextDocuments<TextDocument>
-): (param: HoverParams) => Hover | null {
-  return ({ textDocument, position }) => {
+): (param: HoverParams) => Promise<Hover | null> {
+  return async ({ textDocument, position }) => {
     const document = documents.get(textDocument.uri);
     const uri = document?.uri.toString();
     if (!document || !uri) return null;
 
-    const { scriptMapping } = mpxLocationMappingService.get(uri) || {};
+    const { scriptMapping } = await mpxLocationMappingService.get(uri) || {};
     if (!scriptMapping) return null;
 
     const { targetRange, keyLoc } =
-      findDefinition(uri, document.offsetAt(position)) || {};
+      await findDefinition(uri, document.offsetAt(position)) || {};
     if (!targetRange || !keyLoc) return null;
 
     const contentsArray = [];
@@ -87,14 +88,14 @@ function hoverProvider(
   };
 }
 
-export function findDefinition(
+export async function findDefinition(
   uri: string,
   position: number
-): {
+): Promise<{
   targetRange: Array<{ start: MatrixLocation; end: MatrixLocation }>;
   keyLoc: MapLocation;
-} | null {
-  const sfcMapping = mpxLocationMappingService.get(uri);
+} | null> {
+  const sfcMapping = await mpxLocationMappingService.get(uri);
   const { templateMapping, stylusPropsMapping } = sfcMapping || {};
   if (
     !templateMapping ||

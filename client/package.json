@@ -1,24 +1,21 @@
 {
-	"name": "mpx-template-client",
-	"description": "VSCode part of the language server",
-	"author": "wangshun",
-	"license": "MIT",
-	"version": "0.0.1",
-	"publisher": "wangshun",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/Microsoft/vscode-extension-samples"
-	},
-	"engines": {
-		"vscode": "^1.75.0"
-	},
-	"dependencies": {
-		"transform-to-unocss-core": "^0.0.30",
-		"ts-debounce": "^4.0.0",
-		"vscode-languageclient": "^8.1.0"
-	},
-	"devDependencies": {
-		"@types/vscode": "^1.75.1",
-		"@vscode/test-electron": "^2.2.3"
-	}
+  "name": "mpx-template-client",
+  "description": "VSCode part of the language server",
+  "author": "wangshun",
+  "license": "MIT",
+  "version": "0.0.1",
+  "publisher": "wangshun",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "dependencies": {
+    "transform-to-unocss-core": "^0.0.30",
+    "ts-debounce": "^4.0.0",
+    "vscode-languageclient": "^8.1.0"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/vscode": "^1.75.1",
+    "@vscode/test-electron": "^2.2.3"
+  }
 }

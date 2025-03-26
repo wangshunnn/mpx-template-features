@@ -7,8 +7,8 @@ export function useOnRequest(
   if (!connection) return;
 
   /** 视图拆分 */
-  connection.onRequest("mpx/parseSfc", (uri: string) => {
-    const { descriptor = {} } = mpxLocationMappingService.get(uri);
+  connection.onRequest("mpx/parseSfc", async (uri: string) => {
+    const { descriptor = {} } = await mpxLocationMappingService.get(uri);
     return descriptor;
   });
 
@@ -18,12 +18,12 @@ export function useOnRequest(
   });
 }
 
-export function sendRequestTokens(
+export async function sendRequestTokens(
   connection: ReturnType<typeof createConnection>,
   uri: string
 ) {
   const { templateMapping, stylusMapping, stylusPropsMapping } =
-    mpxLocationMappingService.get(uri);
+    await mpxLocationMappingService.get(uri);
   const stylusTokensSorted =
     templateMapping?.classLocationSort.filter(({ key }) =>
       stylusMapping?.has(key)
