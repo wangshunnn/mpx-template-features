@@ -1,4 +1,4 @@
-import { parse } from "@babel/parser";
+import { parse, ParseResult, parseExpression as parseExpr } from "@babel/parser";
 import traverse, { TraverseOptions } from "@babel/traverse";
 import * as t from "@babel/types";
 import { LRUCache } from "vscode-languageserver";
@@ -19,11 +19,42 @@ export function parseExpression(content = "") {
   return traverseExpression(content, 0);
 }
 
+const tryParse = (content: string) => {
+  const res = [
+    // try parse expression, link binaryExpression, link `1 + 2 + name + age + obj.m1.m2 + obj[foo]`
+    () => parse(content),
+    // try parse literal, link `{ name: 'value', age: 18 }`
+    () => parseExpr(content)
+  ];
+  let _error: any;
+  for (const fn of res) {
+    try {
+      return fn();
+    } catch (error) {
+      _error = error;
+    }
+  }
+
+  if (_error) {
+    throw _error;
+  }
+};
+
 function traverseExpression(content: string, offset: number) {
   const result: [string, number][] = [];
-  const expr = parse(content);
+  let expr: ParseResult<t.File> | ParseResult<t.Expression> | undefined;
+
+  try {
+    expr = tryParse(content);
+  } catch (error) {
+    console.log(`[debug warning] parse content failed "${content}"`, error);
+    return result;
+  }
+
+  if (!expr) return result;
 
   const traverseOption: TraverseOptions = {
+    noScope: true,
     Identifier(path) {
       const name = path.node.name;
       if (name) {
@@ -54,7 +85,12 @@ function traverseExpression(content: string, offset: number) {
       }
     },
   };
-  traverse(expr, traverseOption);
+
+  try {
+    traverse(expr, traverseOption);
+  } catch (error) {
+    console.log(`[debug warning] traverse content failed "${content}"`, error);
+  }
   return result;
 }
 

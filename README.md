@@ -17,6 +17,8 @@
    - template 中属性的 `变量、方法` 支持跳转到 `<script> 中的定义位置`
    - template 中的 `class 类名` 支持跳转到 `<style> 样式脚本对应位置`
    - template 中的 `自定义的组件标签名` 支持跳转到 `自定义组件所在的文件`
+   - template 中 `component 组件 range 属性` 支持跳转到对应的组件中
+   - template 中的属性、子集支持多表达式解析，分析出变量、方法并支持跳转
 2. 🚀 **Hover**：`class 类名` hover 展示对应的 style 样式片段
 3. 🚀 **自动转为原子类**：`hover` 中支持将 `stylus class` 对应的样式一键转换为 `Unocss`
    -  支持自定义转换规则，配置文件：`css2uno.config.js`, 示例见[下文详情](#自定义转换-unocss-规则)
@@ -36,6 +38,13 @@
 - 定义跳转
   
    <img src="./asset/mpx-features-tag-jump.png" alt="定义跳转" width="700"/>
+
+支持 ts paths
+
+   <img src="./asset/mpx-feature-ts-paths-resolve.png" alt="ts paths resolve" width="700"/>
+
+component tag 支持快速跳转
+   <img src="./asset/mpx-features-component-tag-range.png" alt="component tag 跳转" width="700"/>
 
 - 视图拆分
   
