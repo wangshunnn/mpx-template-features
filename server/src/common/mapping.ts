@@ -6,28 +6,31 @@ import { LRUCache } from "vscode-languageserver";
 import { SFCMapping, parseSFC } from "./parse";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-class MpxLocationMappingService extends LRUCache<string, SFCMapping> {
+class MpxLocationMappingService {
+  cache!: LRUCache<string, Promise<SFCMapping> | SFCMapping>;
   constructor(capacity: number) {
-    super(capacity);
+    this.cache = new LRUCache<string, Promise<SFCMapping> | SFCMapping>(capacity);
   }
 
   public Initialize(uri: string): void {
     this.get(uri);
   }
 
-  public override get(uri: string): SFCMapping {
-    const cachedMapping = super.get(uri);
+  public async get(uri: string): Promise<SFCMapping> {
+    const cachedMapping = this.cache.get(uri);
     if (cachedMapping) {
       return cachedMapping;
     }
     const sfcMapping = parseSFC(uri);
-    super.set(uri, sfcMapping);
+
+    this.cache.set(uri, sfcMapping);
+
     return sfcMapping;
   }
 
-  public refresh(uri: string, document?: TextDocument): void {
+  public async refresh(uri: string, document?: TextDocument) {
     const sfcMapping = parseSFC(uri, document);
-    super.set(uri, sfcMapping);
+    this.cache.set(uri, sfcMapping);
   }
 }
 

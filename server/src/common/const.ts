@@ -17,6 +17,7 @@ export const enum SCRIPT_CREATE_COMPONENT_PROPS {
   DATA = "data",
   COMPUTED = "computed",
   METHODS = "methods",
+  SETUP = "setup",
 }
 
 export const enum SETUP_GLOBAL_FUNCTION_NAME {

@@ -103,7 +103,6 @@
     "compile": "tsc -b",
     "watch": "tsc -b -w",
     "lint": "eslint ./client/src ./server/src --ext .ts,.tsx",
-    "postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
     "test": "sh ./scripts/e2e.sh",
     "pack": "vsce package",
     "publish": "vsce publish",
@@ -112,6 +111,7 @@
     "publish:patch": "vsce publish patch"
   },
   "devDependencies": {
+    "@types/glob": "^8.1.0",
     "@types/mocha": "^9.1.0",
     "@types/node": "^16.18.34",
     "@typescript-eslint/eslint-plugin": "^6.7.0",
