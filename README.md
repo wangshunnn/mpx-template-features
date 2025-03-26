@@ -39,11 +39,11 @@
   
    <img src="./asset/mpx-features-tag-jump.png" alt="定义跳转" width="700"/>
 
-支持 ts paths
+- 支持 ts paths
 
    <img src="./asset/mpx-feature-ts-paths-resolve.png" alt="ts paths resolve" width="700"/>
 
-component tag 支持快速跳转
+- component tag 支持快速跳转
    <img src="./asset/mpx-features-component-tag-range.png" alt="component tag 跳转" width="700"/>
 
 - 视图拆分
