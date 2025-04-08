@@ -1,11 +1,19 @@
-import { Definition, TextDocumentPositionParams, TextDocuments, createConnection } from "vscode-languageserver/node";
+import {
+  Definition,
+  Range,
+  TextDocumentPositionParams,
+  TextDocuments,
+  createConnection,
+} from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { MatrixLocation, reolveAbsolutePath } from "../common/parse";
 import { mpxLocationMappingService } from "../common/mapping";
-import path = require("path");
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+const path = require("path");
 import { binarySearch, uriToFileName } from "../common/utils";
 import { projectRootpathPromise } from "../server";
-import { MapLocation } from '../common/types';
+import { MapLocation } from "../common/types";
 
 export async function useDefinition(
   connection: ReturnType<typeof createConnection>,
@@ -33,6 +41,8 @@ function definitionProvider(
   };
 }
 
+const pos0 = (document: TextDocument) => Range.create(document.positionAt(0), document.positionAt(0));
+
 export async function findDefinition(
   document: TextDocument,
   uri: string,
@@ -48,36 +58,37 @@ export async function findDefinition(
   const findTagDefinition = binarySearch(templateMapping.tagLocationSort, position);
   if (findTagDefinition && scriptJsonMapping) {
     const { key } = findTagDefinition;
-    const { absolutePath = "", relativePath = "" } = scriptJsonMapping.get(key) || {};
-    if (absolutePath) {
-      // 跳转其他文件
-      return {
-        uri: absolutePath,
-        range: {
-          start: { line: 0, character: 0 },
-          end: { line: 0, character: 0 },
-        },
-      };
-    } else {
-      if (!rooPath) {
-        return null;
-      }
-      let res = reolveAbsolutePath(path.join(uriToFileName(rooPath), relativePath));
-      if (!res) {
-        res = reolveAbsolutePath(path.join(uriToFileName(rooPath), "/node_modules/", relativePath));
-      }
-      if (res) {
-        return {
-          uri: res,
-          range: {
-            start: { line: 0, character: 0 },
-            end: { line: 0, character: 0 },
-          },
-        };
-      }
-    }
-    return null;
+    const componentMates = (scriptJsonMapping.get(key) || []).filter((item) => item.absolutePath || item.relativePath);
+
+    return componentMates
+      .map(({ absolutePath, relativePath }) => {
+        if (absolutePath) {
+          // 跳转其他文件
+          return {
+            uri: absolutePath,
+            range: pos0(document),
+          } satisfies Definition;
+        }
+
+        if (relativePath) {
+          if (!rooPath) {
+            return null;
+          }
+          let res = reolveAbsolutePath(path.join(uriToFileName(rooPath), relativePath));
+          if (!res) {
+            res = reolveAbsolutePath(path.join(uriToFileName(rooPath), "/node_modules/", relativePath));
+          }
+          if (res) {
+            return {
+              uri: res,
+              range: pos0(document),
+            } satisfies Definition;
+          }
+        }
+      })
+      .filter(Boolean) as Definition;
   }
+
   const findClassDefinition = binarySearch(templateMapping.classLocationSort, position);
   if (findClassDefinition && stylusMapping) {
     const { key } = findClassDefinition;
@@ -93,6 +104,7 @@ export async function findDefinition(
     }
     return null;
   }
+
   const findVarDefinition = binarySearch(templateMapping.variableLocationSort, position);
   if (findVarDefinition && scriptMapping) {
     const { key } = findVarDefinition;

@@ -47,7 +47,7 @@ export type ScriptMapping = {
 } | null;
 export type StylusMapping = Map<string, MatrixLocation[]>;
 export type StylusPropsMapping = Map<string, Array<{ start: MatrixLocation; end: MatrixLocation }>>;
-export type ScriptJsonMapping = Map<string, JsonMappingValue>;
+export type ScriptJsonMapping = Map<string, JsonMappingValue[]>;
 export type Template2ScriptMapping = Map<string, MapLocation>;
 export type SFCMapping = {
   templateMapping: TemplateMapping | null;
@@ -70,7 +70,7 @@ const emptySfcMapping: SFCMapping = {
 };
 
 export async function parseSFC(uri: string, document?: TextDocument): Promise<SFCMapping> {
-  console.log('---> debug11', uri);
+  console.log("---> debug11", uri);
   try {
     let fileContent;
     if (document) {
@@ -107,18 +107,15 @@ export const ignoreTagList = ["template", "view", "image", "text", "block"];
 
 export function parseTemplate(descriptor: SFCDescriptor, uri: string): TemplateMapping {
   if (!descriptor.template?.content) return null;
-  const compileTemplateResult = compileTemplate({
-    source: descriptor.template?.ast?.loc?.source,
-    filename: uri,
-    id: uri + "_mpx_template_",
-  });
+
   const tagMapping = new Map<string, MappingValue>();
   const classMapping = new Map<string, MappingValue>();
   const variableMapping = new Map<string, MappingValue>();
   const rangeMapping = new Set<MappingValue>();
+
   const templateLoc = {
-    start: descriptor.template.ast.loc?.start?.offset + 1,
-    end: descriptor.template.ast.loc?.end?.offset + 1,
+    start: 1,
+    end: (descriptor.template?.loc?.end?.offset ?? 0) - (descriptor.template?.loc?.start?.offset ?? 0) + 1,
   };
 
   // fs.writeFileSync(
@@ -183,6 +180,7 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string): TemplateM
                 if (!("value" in prop)) {
                   continue;
                 }
+
                 if (child.tag === "component" && prop.name === "range") {
                   const content = prop.value?.content;
                   const _loc = prop.value?.loc;
@@ -207,16 +205,31 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string): TemplateM
                         ],
                         [[], locStart],
                       )[0]
-                      .forEach((item) => rangeMapping.add(item));
+                      .forEach((item) => tagMapping.set(item.key + "-" + locStart, item));
                   }
                 } else if (["class", "wx:class"].includes(prop.name)) {
+                  const _loc = prop.value?.loc;
+                  // parse class expr variable
+                  parseMpxExpression(prop.value?.loc.source ?? "").forEach((res) => {
+                    const [key = "", offset = 0] = res;
+                    if (key && _loc?.start?.offset) {
+                      const locStart = _loc.start.offset + offset;
+                      variableMapping.set(key + "-" + locStart, {
+                        key,
+                        loc: {
+                          start: locStart,
+                          end: locStart + key.length,
+                        },
+                      });
+                    }
+                  });
+
                   let content: string;
                   try {
                     content = JSON.parse(prop.value?.loc?.source + "");
                   } catch (_) {
                     continue;
                   }
-                  const _loc = prop.value?.loc;
 
                   formatClass(content).forEach((res) => {
                     const [key = "", offset = 0, isVariable = false] = res;
@@ -231,22 +244,14 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string): TemplateM
                       });
                     }
                   });
-
-                  parseMpxExpression(content).forEach((res) => {
-                    const [key = "", offset = 0] = res;
-                    if (key && _loc?.start?.offset) {
-                      const locStart = _loc.start.offset + offset + templateLoc.start;
-                      variableMapping.set(key + "-" + locStart, {
-                        key,
-                        loc: {
-                          start: locStart,
-                          end: locStart + key.length,
-                        },
-                      });
-                    }
-                  });
                 } else if (prop.name.startsWith("bind") || prop.name.startsWith("catch")) {
-                  parseExpression(prop.value?.content).forEach((res) => appendVariableMapping(res, prop.value?.loc));
+                  if (prop.name.includes("{{")) {
+                    parseMpxExpression(prop.value?.content).forEach((res) =>
+                      appendVariableMapping(res, prop.value?.loc),
+                    );
+                  } else {
+                    parseExpression(prop.value?.content).forEach((res) => appendVariableMapping(res, prop.value?.loc));
+                  }
                 } else if (prop.value?.content.includes("{{")) {
                   const content = prop.value?.content;
                   const _loc = prop.value?.loc;
@@ -299,9 +304,9 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string): TemplateM
   }
 
   try {
-    traverseTemplate(compileTemplateResult.ast!);
+    traverseTemplate(descriptor.template.ast!);
   } catch (err) {
-    console.warn(`[debug warning] ${uri} tra  verseTemplate error: `, err);
+    console.warn(`[debug warning] ${uri} traverseTemplate error: `, err);
   }
 
   const tagLocationSort = [...tagMapping.entries()].map(([, v]) => v);
@@ -316,34 +321,11 @@ export function parseTemplate(descriptor: SFCDescriptor, uri: string): TemplateM
     tagLocationSort,
     classLocationSort,
     variableLocationSort,
-    loc: templateLoc,
+    loc: {
+      start: (descriptor.template?.loc?.start?.offset ?? 0) + 1,
+      end: (descriptor.template?.loc?.end?.offset ?? 0) + 1,
+    },
   };
-}
-
-// TODO 增加对复杂表达式的解析
-export function formatCotent(content = ""): [string, number][] {
-  if (!content) return [];
-  let key = content.trim();
-  if (key.startsWith("{{") && key.endsWith("}}")) {
-    key = key.slice(2, -2).trim();
-  }
-  if (key.startsWith("'") || key.startsWith('"') || ["true", "false"].includes(key)) {
-    return [["", 0]];
-  }
-  if (key.startsWith("!") || key.startsWith("+")) {
-    key = key.slice(1);
-  }
-  if (key.includes(".")) {
-    key = key.split(".")[0];
-  }
-  if (key.includes("(")) {
-    key = key.split("(")[0];
-  }
-  if (key.includes("[")) {
-    key = key.split("[")[0];
-  }
-  const offset = content.indexOf(key);
-  return [[key, offset]];
 }
 
 export const defaultTagRE = /\{\{((?:.|\r?\n)+?)\}\}/g;
@@ -869,13 +851,13 @@ export function parseStylus(descriptor: SFCDescriptor, uri?: string) {
 }
 
 export async function parseScriptJson(descriptor: SFCDescriptor, errors: CompilerError[], uri: string) {
-  const jsonMapping = new Map<string, JsonMappingValue>();
+  const jsonMapping: ScriptJsonMapping = new Map();
   try {
     let jsonSource: string;
     let jsonScriptType = getJsonScriptType(descriptor);
 
     if (jsonScriptType) {
-      jsonSource = descriptor.script?.loc?.source as string;
+      jsonSource = descriptor.script?.content as string;
     } else if (errors?.length) {
       const jsonDescriptor = errors.find(
         (item: any) =>
@@ -997,7 +979,8 @@ export async function parseScriptJson(descriptor: SFCDescriptor, errors: Compile
           try {
             const { absolutePath = "", relativePath = "" } = await formatUsingComponentsPath(componentPath, uri);
             if (absolutePath || relativePath) {
-              jsonMapping.set(key, {
+              if (!jsonMapping.has(key)) jsonMapping.set(key, []);
+              jsonMapping.get(key)?.push({
                 configPath: componentPath,
                 absolutePath,
                 relativePath,
