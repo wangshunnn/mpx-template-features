@@ -70,7 +70,7 @@ const emptySfcMapping: SFCMapping = {
 };
 
 export async function parseSFC(uri: string, document?: TextDocument): Promise<SFCMapping> {
-  console.log("---> [parse uri]", uri);
+  console.log("[parse uri]", uri);
   try {
     let fileContent;
     if (document) {

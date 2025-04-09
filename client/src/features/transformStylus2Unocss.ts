@@ -26,7 +26,7 @@ const clearUserRules = () => {
  * @internal
  */
 async function loadUserRules(configPath: string) {
-  console.log("[shun] --->", configPath);
+  console.log("[loadUserRules]", configPath);
   try {
     if (fs.existsSync(configPath)) {
       // 动态执行代码来导入模块，避免 require/import 缓存问题
