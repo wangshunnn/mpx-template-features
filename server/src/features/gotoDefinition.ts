@@ -1,3 +1,4 @@
+import * as path from "path";
 import {
   Definition,
   Range,
@@ -8,12 +9,9 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { MatrixLocation, reolveAbsolutePath } from "../common/parse";
 import { mpxLocationMappingService } from "../common/mapping";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-const path = require("path");
 import { binarySearch, uriToFileName } from "../common/utils";
-import { projectRootpathPromise } from "../server";
 import { MapLocation } from "../common/types";
+import { projectRootpathPromise } from "../server";
 
 export async function useDefinition(
   connection: ReturnType<typeof createConnection>,

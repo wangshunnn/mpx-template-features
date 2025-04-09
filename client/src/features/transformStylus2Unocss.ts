@@ -65,7 +65,7 @@ export function initializeConfig() {
 
   const watcher = vscode.workspace.createFileSystemWatcher(configPath);
   watcher.onDidChange(
-    debounce(() => {
+    debounce((_e: vscode.Uri) => {
       loadUserRules(configPath);
     }, 200)
   );
@@ -130,7 +130,8 @@ function transformStylus2Unocss(
       continue;
     }
 
-    let unocss: string, errArr: string[];
+    let unocss = '';
+    let errArr: string[] = [];
 
     try {
       let value = stylusValue;
