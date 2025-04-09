@@ -2,6 +2,7 @@ import { DocumentLink, createConnection, TextDocuments, DocumentLinkParams } fro
 import { Range, TextDocument } from "vscode-languageserver-textdocument";
 import { mpxLocationMappingService } from "../common/mapping";
 import { SCRIPT_CREATE_COMPONENT_PROPS, SETUP_GLOBAL_FUNCTION_NAME } from "../common/const";
+import { MappingValue } from "../common/parse";
 
 const normalScriptFieldMap = new Map<SCRIPT_CREATE_COMPONENT_PROPS, string>([
   [SCRIPT_CREATE_COMPONENT_PROPS.COMPUTED, "computed"],
@@ -35,40 +36,31 @@ function documentLinkProvider(
 
     const { tagMapping, variableMapping, rangeMapping } = templateMapping;
 
+    function addComponentLink(mapping: MappingValue) {
+      const { loc, key } = mapping;
+      const list = scriptJsonMapping?.get(key);
+
+      if (!list) return;
+      list.forEach((componentMetadata) => {
+        const link: DocumentLink = {
+          range: {
+            start: document!.positionAt(loc.start),
+            end: document!.positionAt(loc.end),
+          },
+          tooltip: `转到自定义组件文件: ${componentMetadata.configPath}`,
+        };
+        tagLinkList.push(link);
+      });
+    }
+
     const tagLinkList: DocumentLink[] = [];
     if (scriptJsonMapping) {
-      [...tagMapping.entries()].forEach(([_key, v]) => {
-        const key = _key.substring(0, _key.lastIndexOf("-"));
-        if (scriptJsonMapping.has(key)) {
-          const { loc } = v;
-          const { configPath, absolutePath } = scriptJsonMapping.get(key)!;
-          const link: DocumentLink = {
-            target: absolutePath,
-            range: {
-              start: document.positionAt(loc.start),
-              end: document.positionAt(loc.end),
-            },
-            tooltip: "转到自定义组件文件：" + configPath,
-          };
-          tagLinkList.push(link);
-        }
+      [...tagMapping.values()].forEach((v) => {
+        addComponentLink(v);
       });
 
       rangeMapping.forEach((mapping) => {
-        const { loc, key } = mapping;
-        const componentMetadata = scriptJsonMapping.get(key);
-
-        if (!componentMetadata) return;
-
-        const link: DocumentLink = {
-          target: componentMetadata.absolutePath,
-          range: {
-            start: document.positionAt(loc.start),
-            end: document.positionAt(loc.end),
-          },
-          tooltip: "转到转到自定义组件文件: " + componentMetadata.configPath,
-        };
-        tagLinkList.push(link);
+        addComponentLink(mapping);
       });
     }
 

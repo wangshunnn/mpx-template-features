@@ -21,20 +21,7 @@ async function main() {
     external: ["vscode"],
     logLevel: "warning",
     tsconfig: "./tsconfig.json",
-    plugins: [
-      esbuildProblemMatcherPlugin,
-      {
-        name: "resolve-vue-compiler-sfc-module",
-        setup(build) {
-          build.onResolve({ filter: /^@vue\/compiler-sfc$/ }, () => {
-            return {
-              path: path.resolve("node_modules/@vue/compiler-sfc/dist/compiler-sfc.esm-browser.js"),
-              // namespace: "esm-stub",
-            };
-          });
-        },
-      },
-    ],
+    plugins: [esbuildProblemMatcherPlugin, resolveVueCompilerSfcModulePlugin],
   });
   if (watch) {
     await ctx.watch();
@@ -61,6 +48,22 @@ const esbuildProblemMatcherPlugin = {
         console.error(`    ${location.file}:${location.line}:${location.column}:`);
       });
       console.log("[esbuild] build finished");
+    });
+  },
+};
+
+/**
+ * @type {import('esbuild').Plugin}
+ */
+const resolveVueCompilerSfcModulePlugin = {
+  name: "resolve-vue-compiler-sfc-module",
+
+  setup(build) {
+    build.onResolve({ filter: /^@vue\/compiler-sfc$/ }, () => {
+      return {
+        path: path.resolve("node_modules/@vue/compiler-sfc/dist/compiler-sfc.esm-browser.js"),
+        // namespace: "esm-stub",
+      };
     });
   },
 };

@@ -118,9 +118,25 @@ export function parseMpxExpression(content = "") {
 
   while (content.indexOf("{{", offset) !== -1) {
     const start = content.indexOf("{{", offset);
-    const end = content.indexOf("}}", offset);
+    let end = content.indexOf("}}", offset);
     if (start === -1 || end === -1) {
       break;
+    }
+
+    // expect:
+    // `{{{ auto: index }}}`
+    //  ^^               ^^
+
+    if (end !== -1) {
+      let endOffset = end + 2;
+
+      while (endOffset < content.length && content[endOffset] === "}") {
+        endOffset++;
+      }
+
+      if (endOffset !== end + 2) {
+        end = endOffset - 2;
+      }
     }
 
     const expr = content.slice(start + 2, end);

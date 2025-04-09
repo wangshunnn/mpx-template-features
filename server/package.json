@@ -11,7 +11,7 @@
     "@babel/parser": "^7.25.3",
     "@babel/traverse": "^7.25.3",
     "@babel/types": "^7.25.2",
-    "@vue/compiler-sfc": "3.3.4",
+    "@vue/compiler-sfc": "3.5.13",
     "enhanced-resolve": "^5.18.1",
     "stylus": "^0.61.0",
     "ts-debounce": "^4.0.0",

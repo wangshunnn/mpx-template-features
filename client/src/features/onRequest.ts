@@ -16,16 +16,19 @@ export function register(
   client.onRequest(
     "mpx/tokens",
     (params: { tokens?: any; uri?: string } = {}) => {
+      if (!params.uri) {
+        return;
+      }
       const editor = vscode.window.visibleTextEditors.find(
         (e) => e.document.uri.toString() === params.uri
       );
       if (editor) {
         // update
-        mpxLocationMappingClient.update(params?.tokens, params?.uri);
+        mpxLocationMappingClient.update(params.tokens, params.uri);
 
         // decorations
         const { stylusTokensSorted } =
-          (params?.tokens as MpxLocationMappingClientTokens) || {};
+          (params.tokens as MpxLocationMappingClientTokens) || {};
         const classTokensRanges = stylusTokensSorted?.map((token) => {
           const { loc } = token || {};
           return new vscode.Range(

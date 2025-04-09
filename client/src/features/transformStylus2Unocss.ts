@@ -26,7 +26,7 @@ const clearUserRules = () => {
  * @internal
  */
 async function loadUserRules(configPath: string) {
-  console.log("[shun] --->", configPath);
+  console.log("[loadUserRules]", configPath);
   try {
     if (fs.existsSync(configPath)) {
       // 动态执行代码来导入模块，避免 require/import 缓存问题
@@ -65,7 +65,7 @@ export function initializeConfig() {
 
   const watcher = vscode.workspace.createFileSystemWatcher(configPath);
   watcher.onDidChange(
-    debounce(() => {
+    debounce((_e: vscode.Uri) => {
       loadUserRules(configPath);
     }, 200)
   );
@@ -130,7 +130,8 @@ function transformStylus2Unocss(
       continue;
     }
 
-    let unocss: string, errArr: string[];
+    let unocss = '';
+    let errArr: string[] = [];
 
     try {
       let value = stylusValue;

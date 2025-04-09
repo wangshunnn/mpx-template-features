@@ -1,9 +1,9 @@
+import * as path from "path";
 import { existsSync } from "fs";
-import path = require("path");
+import { stat } from "fs/promises";
 
 import { loadConfig, createMatchPathAsync, MatchPathAsync } from "tsconfig-paths";
 import { withResolvers } from "./utils";
-import { stat } from "fs/promises";
 
 function createTsAliasMatcher(uri: string) {
   const config = loadConfig(uri);
