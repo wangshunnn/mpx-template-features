@@ -1,6 +1,5 @@
-import * as path from "path";
 import { workspace, ExtensionContext, Uri } from "vscode";
-import * as splitEditors from "./features/splitEditors";
+// import * as splitEditors from "./features/splitEditors";
 import * as onRequest from "./features/onRequest";
 import * as hover from "./features/hover";
 import * as transformStylus2Unocss from "./features/transformStylus2Unocss";
@@ -35,7 +34,7 @@ export function activate(context: ExtensionContext) {
   transformStylus2Unocss.initializeConfig();
 
   /** SFC split */
-  splitEditors.register(context, client);
+  // splitEditors.register(context, client);
   /** onRequest */
   onRequest.register(context, client);
   /** hover: client hover 可以实现 command 富文本, server 不行 😮‍💨 */

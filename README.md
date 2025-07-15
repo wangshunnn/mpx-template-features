@@ -1,3 +1,6 @@
+> ‼️ **注意**：
+> 本插件后续将不再维护，请使用新版 [Mpx 官方插件](https://marketplace.visualstudio.com/items?itemName=mpxjs.mpx-official)，本插件功能也将在官方插件中得到更好地支持。
+
 <br>
 
 <p align="center">

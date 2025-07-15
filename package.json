@@ -84,51 +84,8 @@
           ],
           "default": "off",
           "description": "Traces the communication between VS Code and the language server."
-        },
-        "MpxTemplateFeatures.splitEditors.icon": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show split editor icon in title area of editor."
-        },
-        "MpxTemplateFeatures.splitEditors.layout.left": {
-          "type": "array",
-          "default": [
-            "script",
-            "scriptSetup",
-            "styles"
-          ]
-        },
-        "MpxTemplateFeatures.splitEditors.layout.right": {
-          "type": "array",
-          "default": [
-            "template",
-            "customBlocks"
-          ]
         }
       }
-    },
-    "commands": [
-      {
-        "command": "MpxTemplateFeatures.action.splitEditors",
-        "title": "Split <script>, <template>, <style> Editors in Mpx",
-        "category": "Mpx",
-        "icon": "asset/mpx-icon.png"
-      }
-    ],
-    "menus": {
-      "commandPalette": [
-        {
-          "command": "MpxTemplateFeatures.action.splitEditors",
-          "when": "editorLangId == mpx"
-        }
-      ],
-      "editor/title": [
-        {
-          "command": "MpxTemplateFeatures.action.splitEditors",
-          "when": "resourceLangId == mpx && config.MpxTemplateFeatures.splitEditors.icon",
-          "group": "navigation"
-        }
-      ]
     }
   }
 }
